@@ -23,6 +23,9 @@ On the client vm, switch to user `oracle` and clone this repository
 ```
 sudo su - oracle
 git clone https://github.com/jk-kashe/oracledb-vertexai-demo
+cd oracledb-vertexai-demo
+git checkiut autonomous #will be merged to main later
+
 ```
 
 ### Configure wallet
@@ -159,8 +162,10 @@ This will output a long, random string of 64 hexadecimal characters (representin
 
 ## 🚀 Quick Start
 
+**Note**: run as oracle user! `sudo su - oracle`
+
 ```bash
-# Setup environment
+# Setup environment - follow the prerequisites above
 cp .env.autonomous .env  # Update with your settings as described above!
 
 # Install dependencies, database and populate data
