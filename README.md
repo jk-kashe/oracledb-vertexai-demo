@@ -2,22 +2,172 @@
 
 An intelligent coffee recommendation system showcasing Oracle 23AI vector search with Google Vertex AI integration.
 
+This fork of the original version is intended to work with Oracle Autonomous@GCP.
+
+## Prerequisites
+
+### Autonomous Database and Client VM
+
+It is assumed that you have Oracle Autonomous@GCP and a client machine configured. These steps are currently out of scope for this guide.
+
+### Install required packages
+
+```
+sudo apt install git unzip make
+```
+
+### Clone this repository
+
+On the client vm, switch to user `oracle` and clone this repository
+
+```
+sudo su - oracle
+git clone https://github.com/jk-kashe/oracledb-vertexai-demo
+```
+
+### Configure wallet
+
+1. Download wallet in [GCP console](https://console.cloud.google.com/oracle/autonomous-databases)
+2. Upload it to the client vm (it will be uploaded to the default user - copy it to /home/oracle)
+3. Unzip and configure wallet
+```
+unzip wallet.zip -d wallet
+cd wallet
+sed '1s/^/#/' sqlnet.ora
+export TNS_ADMIN=$(pwd)
+sed -i.bak "s#export TNS_ADMIN=\$ORACLE_HOME/network/admin#export TNS_ADMIN=$(pwd)#" ~/.ora_client.env
+```
+Notes:
+- the first line in sqlnet.ora has an incorrect wallet location by default, so we comment it out
+- TNS_ADMIN has to be set every time, so we write it to ~/.ora_client.env
+
+### Create .env config
+
+```
+cp .env.autonomous .env
+```
+
+#### Update your passwords
+
+Find these lines
+```
+DATABASE_URL="oracle+oracledb://ADMIN:YourDatabaseUserPassword@ora_medium"
+WALLET_PASSWORD="YourWalletPassword"
+```
+
+And replace passwords with your actual passwords.
+
+#### GOOGLE_PROJECT_ID
+
+1. in the GCP console, click on "My First Project" (or another project you are using)
+2. Copy the ID (not Name!)
+3. Update the `GOOGLE_PROJECT_ID` variable in your `.env` file with the project ID you copied.
+
+#### API KEY
+
+##### Step 1: Navigate to the Credentials Page
+
+
+   1. Go to the Google Cloud Console: https://console.cloud.google.com/ (https://console.cloud.google.com/)
+   2. Make sure the correct GCP project (the one where you have your Autonomous Database and will run your application) is selected
+      at the top of the page.
+   3. Open the navigation menu (the "hamburger" icon ☰) in the top-left corner.
+   4. Go to APIs & Services > Credentials.
+
+#####  Step 2: Create the API Key
+
+   1. On the Credentials page, click the + CREATE CREDENTIALS button at the top.
+   2. Select API key from the dropdown menu.
+   3. A dialog box will appear showing your newly created API key. Copy this key immediately. You will use this value in your .env
+      file.
+
+#####  Step 3: Secure Your API Key (Highly Recommended)
+
+  An unrestricted API key is a security risk. Anyone who finds it can use it and generate charges on your account. You should
+  always restrict your keys.
+
+   1. In the dialog box that showed your new key, click EDIT API KEY (or find the key in the list on the Credentials page and click
+      the pencil icon to edit it).
+   2. Under Key restrictions, apply the following:
+       * Application restrictions: Since this is a backend application, the best practice is to restrict the key to the IP address
+         of the server where it will run. Select IP addresses (web servers, cron jobs, etc.) and add the IP address of the GCE
+         instance you plan to use.
+       * API restrictions: Select Restrict key. From the dropdown, choose the specific APIs the key should be allowed to call. For
+         this project, you will need to enable the Vertex AI API.
+
+#####  Step 4: Enable the Necessary APIs
+
+  An API key only grants access to APIs that you have explicitly enabled for your project.
+
+   1. Open the navigation menu (☰) again.
+   2. Go to APIs & Services > Library.
+   3. Search for Vertex AI API.
+   4. Click on it and then click the Enable button. If it's already enabled, you're all set.
+   5. The .env.example file also mentions "maps-and-stuff". If you were to add a feature that uses Google Maps (e.g., to show shop
+      locations), you would also need to search for and enable the Maps JavaScript API or other relevant mapping APIs here.
+
+
+#####  Step 5: Use the Key in Your Project
+
+  Now that you have your key, you need to put it in your application's environment file.
+  Find the GOOGLE_API_KEY line and paste the key you copied in Step 2.
+
+  Your .env file will look something like this:
+
+```
+   # ... other settings ...
+   # apis
+   GOOGLE_PROJECT_ID=your-gcp-project-id
+   GOOGLE_API_KEY=AIzaSyB...your...copied...api...key...
+```
+
+### SECRET_KEY
+
+How to Generate a Secure SECRET_KEY
+
+  The value secret-key-must-be-32-characters in the .env.example file is just a placeholder. You must replace it with your own 
+  unique, random key.
+
+  The easiest way to generate a strong, random key is to use a command-line tool. Since you're using a Linux environment (like Cloud Shell or a GCE VM), openssl is the perfect tool for this.
+
+  Run this command in your terminal:
+
+```
+  openssl rand -hex 32
+```
+
+This will output a long, random string of 64 hexadecimal characters (representing 32 bytes of randomness).
+
+  Example Output:
+  e8a3f4c7b1d9e0f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6
+
+
+  How to Use It
+
+   1. Copy the random string generated by the openssl command.
+   2. Open your .env file.
+   3. Paste the random string as the value for SECRET_KEY.
+
+
+  Your .env file should look like this:
+
+
+
+   1 # ... other settings ...
+   2 
+   3 SECRET_KEY=e8a3f4c7b1d9e0f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6
+
 ## 🚀 Quick Start
 
 ```bash
-# Install dependencies with uv
-make install-uv # Installs Astral's UV Python manager
+# Setup environment
+cp .env.autonomous .env  # Update with your settings as described above!
+
+# Install dependencies, database and populate data
 make install
 
-# Setup environment
-cp .env.example .env  # Edit with your API keys
-
-# Start Oracle 23AI
-make start-infra
-uv run app load-fixtures
-
 # Start the application
-uv run app run
+make run
 ```
 
 **Note: Embedding are included in the gzipped fixtures.**
@@ -27,7 +177,32 @@ If you'd like to regenerate embeddings, you can use:
 uv run app load-vectors
 ```
 
-Visit [http://localhost:5006](http://localhost:5006) to try the demo!
+### Add a firewall rule
+
+To access the application from the internet, you need to open port `5006` on your client VM's firewall.
+
+1.  In the Google Cloud Console, navigate to **VPC Network** -> **Firewall**.
+2.  Click **CREATE FIREWALL RULE**.
+3.  Configure the rule with the following settings:
+    * **Name:** `coffee-app` (or another descriptive name)
+    * **Targets:** `All instances in the network` (**Note:** This is for demo purposes. For production, you should apply the rule to a specific service account or network tag.)
+    * **Source filter:** `IPv4 ranges`
+    * **Source IPv4 ranges:** `0.0.0.0/0` (**Security Note:** It's much safer to use your own public IP address here. You can find it by searching for "what is my ip address".)
+    * **Protocols and ports:**
+        * Select **Specified protocols and ports**.
+        * Check **TCP** and enter `5006`.
+4.  Click **Create**.
+
+### Finding Your VM's Public IP Address
+
+To connect to the demo, you'll need the public IP address of your client VM.
+
+1.  In the Google Cloud Console, navigate to **Compute Engine** > **VM instances**.
+2.  Find your client VM in the list.
+3.  The public IP address is listed in the **External IP** column. Copy this address to use in your browser.
+
+
+Visit http://your-client-vm-public-ip:5006 to try the demo!
 
 ## 🖼️ Screenshots
 
