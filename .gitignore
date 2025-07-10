@@ -103,6 +103,7 @@ celerybeat.pid
 .env
 .env.*
 !.env.example
+!.env.autonomous
 env.bak/
 service_account.json
 

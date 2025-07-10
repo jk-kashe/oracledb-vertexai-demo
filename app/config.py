@@ -50,12 +50,19 @@ cors = CORSConfig(allow_origins=cast("list[str]", _settings.app.ALLOWED_CORS_ORI
 
 
 templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=JinjaTemplateEngine)
-oracle_sync = SyncOracleDatabaseConfig(
-    pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
-)
-oracle_async = AsyncOracleDatabaseConfig(
-    pool_config=AsyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
-)
+
+if _settings.db.URL:
+    # Autonomous Database configuration
+    oracle_sync = SyncOracleDatabaseConfig(url=_settings.db.URL, wallet_password=_settings.db.WALLET_PASSWORD)
+    oracle_async = AsyncOracleDatabaseConfig(url=_settings.db.URL, wallet_password=_settings.db.WALLET_PASSWORD)
+else:
+    # Local/Standard Database configuration
+    oracle_sync = SyncOracleDatabaseConfig(
+        pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
+    )
+    oracle_async = AsyncOracleDatabaseConfig(
+        pool_config=AsyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
+    )
 
 
 log = StructlogConfig(
