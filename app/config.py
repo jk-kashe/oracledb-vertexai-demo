@@ -58,10 +58,9 @@ if _settings.db.URL:
     parsed_url = urlparse(_settings.db.URL)
     user = parsed_url.username
     password = parsed_url.password
-    # The DSN is typically the hostname/path part of the URL
-    dsn = parsed_url.netloc + parsed_url.path
+    dsn = parsed_url.hostname
 
-    # Autonomous Database configuration with parsed components
+    # Autonomous Database configuration with correctly parsed components
     oracle_sync = SyncOracleDatabaseConfig(
         pool_config=SyncOraclePoolConfig(
             user=user,
