@@ -1,4 +1,3 @@
-
 # Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,13 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""An interactive script to configure the project environment."""
+"""An interactive script to configure the project environment with masked input."""
 
-import getpass
 import os
 import subprocess
-from pathlib import Path
 import shutil
+import sys
+from pathlib import Path
+
+# For masked password input
+try:
+    import termios
+    import tty
+    UNIX_PLATFORM = True
+except ImportError:
+    UNIX_PLATFORM = False
 
 import structlog
 
@@ -35,6 +42,44 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
+def getpass_masked(prompt: str = "Password: ") -> str:
+    """Reads a password from the terminal with character masking.
+
+    Args:
+        prompt: The prompt to display to the user.
+
+    Returns:
+        The password entered by the user.
+    """
+    if not UNIX_PLATFORM:
+        # Fallback for non-Unix platforms (like Windows)
+        import getpass
+        return getpass.getpass(prompt)
+
+    print(prompt, end='', flush=True)
+    password = []
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        while True:
+            char = sys.stdin.read(1)
+            if char in ('\r', '\n'):
+                print()
+                break
+            if char == '\x7f':  # Backspace
+                if password:
+                    password.pop()
+                    # Move cursor back, print space, move back again
+                    print('\b \b', end='', flush=True)
+            elif char == '\x03': # Ctrl+C
+                raise KeyboardInterrupt
+            else:
+                password.append(char)
+                print('*', end='', flush=True)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return "".join(password)
 
 def configure_environment() -> None:
     """Interactively configures the project environment."""
@@ -48,22 +93,21 @@ def configure_environment() -> None:
         logger.error("Wallet zip file not found at the specified path.", path=wallet_zip_path)
         return
 
-    db_password = getpass.getpass("Enter your Autonomous Database ADMIN user password: ")
-    wallet_password = getpass.getpass("Enter your wallet password: ")
+    db_password = getpass_masked("Enter your Autonomous Database ADMIN user password: ")
+    wallet_password = getpass_masked("Enter your wallet password: ")
 
     print("\n--- Google Cloud Platform Configuration ---")
     print("To find your Google Cloud Project ID:")
     print("1. Go to the Google Cloud Console: https://console.cloud.google.com/")
-    print("2. At the top of the page, next to the Google Cloud logo, you will see a project name.")
+    print("2. At the top of the page, click on the project name to open the 'Select a project' dialog.")
     print("3. Click on the project name to open the 'Select a project' dialog.")
     print("4. In the dialog, a list of your projects will appear.")
-    print("5. Find the project you are using for this demo and copy its 'ID' (e.g., 'single-clock-465407-s5').")
-    print("   Do not use the 'Name'.")
+    print("5. Find the project you are using for this demo and copy its 'ID' (e.g., 'single-clock-1234-s1').")
+    print("   Do not use the 'Name'.") 
     google_project_id = input("Enter your Google Cloud Project ID: ").strip()
 
     print("\n--- Google Cloud API Key ---")
-    print("To create or find your API Key:")
-    print("1. Go to the GCP Credentials page: https://console.cloud.google.com/apis/credentials")
+    print("To create or find your API Key, go to: https://console.cloud.google.com/apis/credentials")
     print("2. Click the '+ CREATE CREDENTIALS' button at the top.")
     print("3. Select 'API key' from the dropdown menu.")
     print("4. A dialog box will appear showing your new key. Copy this key.")
@@ -72,7 +116,7 @@ def configure_environment() -> None:
     print("2. Under 'API restrictions', select 'Restrict key'.")
     print("3. From the dropdown, select the 'Vertex AI API'.")
     print("   (You may need to enable the Vertex AI API in the API Library first.)")
-    google_api_key = getpass.getpass("Enter your Google Cloud API Key: ")
+    google_api_key = getpass_masked("Enter your Google Cloud API Key: ")
 
     # --- Configure Wallet ---
     logger.info("Configuring Oracle Wallet...")
@@ -91,13 +135,8 @@ def configure_environment() -> None:
         if sqlnet_ora_path.exists():
             lines = sqlnet_ora_path.read_text().splitlines(True)
             if lines and not lines[0].strip().startswith('#'):
-                logger.info("First line of sqlnet.ora is not commented. Commenting it out.")
                 lines[0] = '#' + lines[0]
                 sqlnet_ora_path.write_text("".join(lines))
-            else:
-                logger.info("First line of sqlnet.ora is already commented or file is empty.")
-        else:
-            logger.warning(f"sqlnet.ora not found in wallet directory: {wallet_dir}")
 
         tns_admin_path = wallet_dir.resolve()
         ora_client_env_path = Path.home() / ".ora_client.env"
@@ -120,9 +159,8 @@ def configure_environment() -> None:
 
     shutil.copy(env_autonomous_path, env_path)
 
-    # Update passwords
-    with open(env_path, "r") as f:
-        lines = f.readlines()
+    lines = env_path.read_text().splitlines()
+    key_exists = { "SECRET_KEY": False }
 
     with open(env_path, "w") as f:
         for line in lines:
@@ -134,36 +172,23 @@ def configure_environment() -> None:
                 f.write(f'GOOGLE_PROJECT_ID={google_project_id}\n')
             elif line.startswith("GOOGLE_API_KEY="):
                 f.write(f'GOOGLE_API_KEY={google_api_key}\n')
+            elif line.startswith("SECRET_KEY="):
+                key_exists["SECRET_KEY"] = True
+                secret_key = subprocess.check_output(["openssl", "rand", "-hex", "32"]).decode("utf-8").strip()
+                f.write(f"SECRET_KEY={secret_key}\n")
             else:
-                f.write(line)
-    logger.info("Database and wallet passwords updated in .env file.")
-
-    # --- Generate and insert SECRET_KEY ---
-    logger.info("Generating and adding SECRET_KEY...")
-    try:
-        secret_key = subprocess.check_output(["openssl", "rand", "-hex", "32"]).decode("utf-8").strip()
+                f.write(line + '\n')
         
-        with open(env_path, "r") as f:
-            lines = f.readlines()
-
-        key_exists = False
-        with open(env_path, "w") as f:
-            for line in lines:
-                if line.startswith("SECRET_KEY="):
-                    f.write(f"SECRET_KEY={secret_key}\n")
-                    key_exists = True
-                else:
-                    f.write(line)
-            if not key_exists:
-                f.write(f"\nSECRET_KEY={secret_key}\n")
-
-        logger.info("SECRET_KEY generated and updated in .env file.")
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logger.error("Failed to generate SECRET_KEY. Please generate it manually.", error=str(e), exc_info=True)
+        if not key_exists["SECRET_KEY"]:
+            secret_key = subprocess.check_output(["openssl", "rand", "-hex", "32"]).decode("utf-8").strip()
+            f.write(f"SECRET_KEY={secret_key}\n")
 
     logger.info("Configuration complete! 🎉")
-    logger.info("Please ensure GOOGLE_PROJECT_ID and GOOGLE_API_KEY are set in your .env file.")
+    logger.info("You can now run 'make install' to set up the database and dependencies.")
 
 
 if __name__ == "__main__":
-    configure_environment()
+    try:
+        configure_environment()
+    except KeyboardInterrupt:
+        print("\nConfiguration cancelled by user.")
