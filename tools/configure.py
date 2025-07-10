@@ -60,23 +60,28 @@ def configure_environment() -> None:
 
     # --- Configure Wallet ---
     logger.info("Configuring Oracle Wallet...")
-    wallet_dir = Path("wallet")
-    if wallet_dir.exists():
-        shutil.rmtree(wallet_dir)
-    wallet_dir.mkdir()
+    wallet_dir = Path.home() / "wallet"
 
     try:
-        subprocess.run(["unzip", str(wallet_zip_path), "-d", str(wallet_dir)], check=True)
-        logger.info("Wallet unzipped successfully.")
+        if not wallet_dir.exists():
+            logger.info(f"Creating new wallet directory at {wallet_dir}")
+            wallet_dir.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["unzip", "-o", str(wallet_zip_path), "-d", str(wallet_dir)], check=True)
+            logger.info("Wallet unzipped successfully.")
+        else:
+            logger.info(f"Using existing wallet directory at {wallet_dir}")
 
         sqlnet_ora_path = wallet_dir / "sqlnet.ora"
         if sqlnet_ora_path.exists():
-            with open(sqlnet_ora_path, 'r+') as f:
-                lines = f.readlines()
-                f.seek(0)
-                f.write("#" + lines[0])
-                f.writelines(lines[1:])
-            logger.info("Commented out the first line of sqlnet.ora.")
+            lines = sqlnet_ora_path.read_text().splitlines(True)
+            if lines and not lines[0].strip().startswith('#'):
+                logger.info("First line of sqlnet.ora is not commented. Commenting it out.")
+                lines[0] = '#' + lines[0]
+                sqlnet_ora_path.write_text("".join(lines))
+            else:
+                logger.info("First line of sqlnet.ora is already commented or file is empty.")
+        else:
+            logger.warning(f"sqlnet.ora not found in wallet directory: {wallet_dir}")
 
         tns_admin_path = wallet_dir.resolve()
         ora_client_env_path = Path.home() / ".ora_client.env"
