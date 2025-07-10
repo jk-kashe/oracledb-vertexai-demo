@@ -4,6 +4,55 @@ An intelligent coffee recommendation system showcasing Oracle 23AI vector search
 
 This fork of the original version is intended to work with Oracle Autonomous@GCP.
 
+## 🚀 Quick Start
+
+**Note**: run as oracle user! `sudo su - oracle`
+
+```bash
+# Setup environment - follow the prerequisites below for details
+make config
+
+# Install dependencies, database and populate data
+make install
+
+# Start the application
+make run
+```
+
+**Note: Embedding are included in the gzipped fixtures.**
+If you'd like to regenerate embeddings, you can use:
+
+```sh
+uv run app load-vectors
+```
+
+### Add a firewall rule
+
+To access the application from the internet, you need to open port `5006` on your client VM's firewall.
+
+1.  In the Google Cloud Console, navigate to **VPC Network** -> **Firewall**.
+2.  Click **CREATE FIREWALL RULE**.
+3.  Configure the rule with the following settings:
+    * **Name:** `coffee-app` (or another descriptive name)
+    * **Targets:** `All instances in the network` (**Note:** This is for demo purposes. For production, you should apply the rule to a specific service account or network tag.)
+    * **Source filter:** `IPv4 ranges`
+    * **Source IPv4 ranges:** `0.0.0.0/0` (**Security Note:** It's much safer to use your own public IP address here. You can find it by searching for "what is my ip address".)
+    * **Protocols and ports:**
+        * Select **Specified protocols and ports**.
+        * Check **TCP** and enter `5006`.
+4.  Click **Create**.
+
+### Finding Your VM's Public IP Address
+
+To connect to the demo, you'll need the public IP address of your client VM.
+
+1.  In the Google Cloud Console, navigate to **Compute Engine** > **VM instances**.
+2.  Find your client VM in the list.
+3.  The public IP address is listed in the **External IP** column. Copy this address to use in your browser.
+
+
+Visit http://your-client-vm-public-ip:5006 to try the demo!
+
 ## Prerequisites
 
 ### Autonomous Database and Client VM
@@ -160,54 +209,7 @@ This will output a long, random string of 64 hexadecimal characters (representin
    2 
    3 SECRET_KEY=e8a3f4c7b1d9e0f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6
 
-## 🚀 Quick Start
 
-**Note**: run as oracle user! `sudo su - oracle`
-
-```bash
-# Setup environment - follow the prerequisites above
-cp .env.autonomous .env  # Update with your settings as described above!
-
-# Install dependencies, database and populate data
-make install
-
-# Start the application
-make run
-```
-
-**Note: Embedding are included in the gzipped fixtures.**
-If you'd like to regenerate embeddings, you can use:
-
-```sh
-uv run app load-vectors
-```
-
-### Add a firewall rule
-
-To access the application from the internet, you need to open port `5006` on your client VM's firewall.
-
-1.  In the Google Cloud Console, navigate to **VPC Network** -> **Firewall**.
-2.  Click **CREATE FIREWALL RULE**.
-3.  Configure the rule with the following settings:
-    * **Name:** `coffee-app` (or another descriptive name)
-    * **Targets:** `All instances in the network` (**Note:** This is for demo purposes. For production, you should apply the rule to a specific service account or network tag.)
-    * **Source filter:** `IPv4 ranges`
-    * **Source IPv4 ranges:** `0.0.0.0/0` (**Security Note:** It's much safer to use your own public IP address here. You can find it by searching for "what is my ip address".)
-    * **Protocols and ports:**
-        * Select **Specified protocols and ports**.
-        * Check **TCP** and enter `5006`.
-4.  Click **Create**.
-
-### Finding Your VM's Public IP Address
-
-To connect to the demo, you'll need the public IP address of your client VM.
-
-1.  In the Google Cloud Console, navigate to **Compute Engine** > **VM instances**.
-2.  Find your client VM in the list.
-3.  The public IP address is listed in the **External IP** column. Copy this address to use in your browser.
-
-
-Visit http://your-client-vm-public-ip:5006 to try the demo!
 
 ## 🖼️ Screenshots
 
