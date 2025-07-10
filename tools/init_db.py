@@ -62,20 +62,35 @@ async def initialize_database() -> None:
             logger.info("Successfully connected to the database.")
             try:
                 sql_script = sql_script_path.read_text()
-                # Split the script into individual statements based on the semicolon (;) delimiter.
-                # This is a simple approach; for more complex scripts, a more robust parser might be needed.
-                sql_statements = [
-                    statement.strip()
-                    for statement in sql_script.split(";")
-                    if statement.strip()
-                ]
+                import re
+
+                # Remove comments from the script
+                # Remove multi-line comments /* ... */
+                sql_script = re.sub(r'/\*.*?\*/', '', sql_script, flags=re.DOTALL)
+                # Remove single-line comments -- ...
+                sql_script = re.sub(r'--.*', '', sql_script)
+
+                # Isolate the PL/SQL block (assuming one block for simplicity)
+                plsql_block = None
+                begin_index = sql_script.find('BEGIN')
+                if begin_index != -1:
+                    # Find the end of the PL/SQL block, which is marked by 'END;'
+                    end_index = sql_script.find('END;', begin_index)
+                    if end_index != -1:
+                        plsql_block = sql_script[begin_index:end_index + 4].strip()
+                        # Remove the PL/SQL block from the main script string
+                        sql_script = sql_script[:begin_index] + sql_script[end_index + 4:]
+
+                # Split the remaining script into individual statements
+                sql_statements = [s.strip() for s in sql_script.split(';') if s.strip()]
 
                 for statement in sql_statements:
-                    # The script might contain PL/SQL blocks ending with a forward slash (/).
-                    # We handle these by splitting the statement again.
-                    for sub_statement in statement.split('/'):
-                        if sub_statement.strip():
-                            await cursor.execute(sub_statement)
+                    if statement:
+                        await cursor.execute(statement)
+
+                # Execute the PL/SQL block if it was found
+                if plsql_block:
+                    await cursor.execute(plsql_block)
 
                 await conn.commit()
                 logger.info("Database schema initialized successfully. ✅")
