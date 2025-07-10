@@ -1,4 +1,3 @@
-
 # Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A standalone script to initialize the database schema."""
+"""
+A standalone script to initialize the database schema using sqlplus.
+This script reads the application's configuration to connect to the database.
+"""
 
-import anyio
-import structlog
+import os
+import subprocess
 from pathlib import Path
+
+import structlog
 
 # Configure structlog for standalone script logging
 structlog.configure(
@@ -31,23 +35,28 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
-async def initialize_database() -> None:
-    """Connects to the database and executes the db_init.sql script."""
+
+def initialize_database() -> None:
+    """
+    Connects to the database using sqlplus and executes the db_init.sql script.
+    """
     try:
-        from app.config import oracle_async
+        # Dynamically import settings from the application
         from app.lib.settings import get_settings
+
+        settings = get_settings()
+        logger.info("Successfully loaded application settings.")
     except ImportError:
         logger.error(
             "Could not import application components. "
-            "Please ensure this script is run within the project's virtual environment (e.g., using 'uv run')."
+            "Please ensure this script is run from the project root "
+            "within the project's virtual environment (e.g., using 'uv run')."
         )
         return
 
     logger.info("Starting database initialization...")
 
-    settings = get_settings()
-    # Construct the absolute path to the SQL script
-    # The script is in tools/deploy/oracle, and this script is in tools/
+    # The SQL script is located relative to this file's parent directory
     sql_script_path = Path(__file__).parent / "deploy" / "oracle" / "db_init.sql"
 
     if not sql_script_path.exists():
@@ -56,48 +65,75 @@ async def initialize_database() -> None:
 
     logger.info("Found database script.", path=str(sql_script_path))
 
+    # Get database credentials from settings.
+    # The user should be a privileged user (e.g., ADMIN) that can run the script.
+    user = settings.db.USER
+    password = settings.db.PASSWORD
+    dsn = settings.db.DSN
+
+    if not all([user, password, dsn]):
+        logger.error(
+            "Database credentials (USER, PASSWORD, DSN) not found in settings. "
+            "Please check your .env file."
+        )
+        return
+
+    # For Autonomous Database, the wallet (config_dir) must be set up.
+    # We set the TNS_ADMIN environment variable to point to the wallet directory.
+    env = os.environ.copy()
+    if settings.db.config_dir:
+        tns_admin = str(Path(settings.db.config_dir).resolve())
+        env["TNS_ADMIN"] = tns_admin
+        logger.info(
+            "TNS_ADMIN set for Autonomous Database connection.", tns_admin=tns_admin
+        )
+
     try:
-        async with oracle_async.get_connection() as conn:
-            cursor = conn.cursor()
-            logger.info("Successfully connected to the database.")
-            try:
-                sql_script = sql_script_path.read_text()
-                import re
+        # Construct the sqlplus command.
+        # The connection string is in the format: user/password@dsn
+        # The -S flag runs sqlplus in "silent" mode.
+        connect_string = f"{user}/{password}@{dsn}"
+        command = ["sqlplus", "-S", connect_string, f"@{sql_script_path}"]
 
-                # Remove comments from the script
-                # Remove multi-line comments /* ... */
-                sql_script = re.sub(r'/\*.*?\*/', '', sql_script, flags=re.DOTALL)
-                # Remove single-line comments -- ...
-                sql_script = re.sub(r'--.*', '', sql_script)
+        logger.info("Executing database initialization script via sqlplus...")
 
-                # Isolate the PL/SQL block (assuming one block for simplicity)
-                plsql_block = None
-                begin_index = sql_script.find('BEGIN')
-                if begin_index != -1:
-                    # Find the end of the PL/SQL block, which is marked by 'END;'
-                    end_index = sql_script.find('END;', begin_index)
-                    if end_index != -1:
-                        plsql_block = sql_script[begin_index:end_index + 4].strip()
-                        # Remove the PL/SQL block from the main script string
-                        sql_script = sql_script[:begin_index] + sql_script[end_index + 4:]
+        # Execute the command. We capture stdout and stderr.
+        process = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,  # We check the return code manually
+        )
 
-                # Split the remaining script into individual statements
-                sql_statements = [s.strip() for s in sql_script.split(';') if s.strip()]
+        # Log the output from sqlplus
+        if process.stdout:
+            # The script enables DBMS_OUTPUT, so we log it here.
+            logger.info("sqlplus output:", output=process.stdout.strip())
+        if process.stderr:
+            logger.error("sqlplus error:", error=process.stderr.strip())
 
-                for statement in sql_statements:
-                    if statement:
-                        await cursor.execute(statement)
+        # Check if the command was successful
+        if process.returncode != 0:
+            logger.error(
+                "Database initialization failed.",
+                return_code=process.returncode,
+            )
+        else:
+            logger.info("Database schema initialized successfully. ✅")
 
-                # Execute the PL/SQL block if it was found
-                if plsql_block:
-                    await cursor.execute(plsql_block)
-
-                await conn.commit()
-                logger.info("Database schema initialized successfully. ✅")
-            finally:
-                await cursor.close()
+    except FileNotFoundError:
+        logger.error(
+            "`sqlplus` command not found. "
+            "Please ensure the Oracle Instant Client is installed and in your PATH."
+        )
     except Exception as e:
-        logger.error("An error occurred during database initialization.", error=str(e), exc_info=True)
+        logger.error(
+            "An unexpected error occurred while running sqlplus.",
+            error=str(e),
+            exc_info=True,
+        )
+
 
 if __name__ == "__main__":
-    anyio.run(initialize_database)
+    initialize_database()
