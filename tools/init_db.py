@@ -1,3 +1,4 @@
+
 # Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-A truly standalone script to initialize the database schema using sqlplus.
-It reads the .env file directly without importing any application code.
-"""
+"""A truly standalone script to initialize the database schema using sqlplus."""
 
 import os
 import subprocess
@@ -84,36 +82,36 @@ def initialize_database() -> None:
         logger.info("TNS_ADMIN found in environment.", tns_admin=tns_admin_path)
 
     try:
-        # Construct the sqlplus command
-        # The password must be quoted to handle special characters.
+        # Read the SQL script content
+        sql_script_content = sql_script_path.read_text()
+
+        # Construct the sqlplus command. We will pipe the script to stdin.
         connect_string = f'{user}/"{password}"@{dsn}'
-        command = ["sqlplus", "-S", connect_string, f"@{sql_script_path}"]
+        command = ["sqlplus", "-S", connect_string]
 
-        logger.info("Executing command...", command=" ".join(command))
+        logger.info("Executing sqlplus and piping script content to stdin...")
 
-        # Use Popen to stream output in real-time
+        # Use Popen and communicate to safely handle stdin, stdout, and stderr
+        # This is the robust way to prevent deadlocks.
         process = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
+            command, 
+            stdin=subprocess.PIPE, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            text=True, 
+            env=env
         )
+        
+        stdout, stderr = process.communicate(input=sql_script_content)
 
-        logger.info("sqlplus process started. Reading output...")
-
-        # Stream and log stdout
-        if process.stdout:
-            for line in iter(process.stdout.readline, ""):
-                if line:
-                    logger.info("sqlplus", output=line.strip())
-
-        # Wait for the process to finish and capture any remaining stderr
-        stdout, stderr = process.communicate()
-
+        # Log the output
+        if stdout:
+            logger.info("sqlplus output:", output=stdout.strip())
         if stderr:
-            logger.error("sqlplus", error=stderr.strip())
+            logger.error("sqlplus error:", error=stderr.strip())
 
         if process.returncode != 0:
-            logger.error(
-                "Database initialization failed.", return_code=process.returncode
-            )
+            logger.error("Database initialization failed.", return_code=process.returncode)
         else:
             logger.info("Database schema initialized successfully. ✅")
 
