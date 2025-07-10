@@ -51,6 +51,12 @@ run: ## Run the application server with hot-reloading.
 	@echo "${INFO} Starting the application server..."
 	@uv run granian --host 0.0.0.0 --port 8000 --reload app.asgi:app
 
+.PHONY: clean-db
+clean-db: ## Drop the database user and all associated objects.
+	@echo "${INFO} Cleaning the database..."
+	@python tools/clean_db.py
+	@echo "${OK} Database cleaning script finished."
+
 .PHONY: test
 test: ## Run the tests
 	@echo "${INFO} Running test cases... 🧪"
