@@ -33,14 +33,39 @@ help: ## Display this help text for Makefile
 # Installation and Environment Setup
 # =============================================================================
 .PHONY: install-uv
-install-uv:                                         ## Install latest version of uv
+install-uv:                                         ## Install uv and configure PATH automatically
 	@echo "${INFO} Installing uv..."
-	@curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1
-	@echo "${OK} UV installed successfully"
+	@curl -LsSf https://astral.sh/uv/install.sh | sh
+	@echo "${INFO} Detecting installation path and updating ~/.bashrc..."
+	@UV_DIR=""
+	@if [ -f "$HOME/.cargo/bin/uv" ]; then \
+		UV_DIR="$HOME/.cargo/bin"; \
+	elif [ -f "$HOME/.local/bin/uv" ]; then \
+		UV_DIR="$HOME/.local/bin"; \
+	fi
+	@if [ -n "$UV_DIR" ]; then \
+		if ! grep -q "$UV_DIR" "$HOME/.bashrc"; then \
+			echo '' >> "$HOME/.bashrc"; \
+			echo '# Add Astral uv to the PATH' >> "$HOME/.bashrc"; \
+			echo "export PATH=\"$UV_DIR:\$PATH\"" >> "$HOME/.bashrc"; \
+			@echo "${OK} Added '$UV_DIR' to your ~/.bashrc."; \
+			@echo "${INFO} Please run 'source ~/.bashrc' or restart your shell to apply the changes permanently."; \
+		else \
+			@echo "${WARN} '$UV_DIR' is already in your ~/.bashrc."; \
+		fi; \
+	else \
+		@echo "${ERROR} Could not automatically find the uv installation directory. Please add it to your PATH manually."; \
+	fi
+	@echo "${OK} UV installation complete."
 
 .PHONY: install
 install: destroy clean ## Install the project, dependencies, and pre-commit
 	@echo "${INFO} Starting fresh installation..."
+	@if [ -f "$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$HOME/.cargo/bin:$PATH"; \
+	elif [ -f "$HOME/.local/bin/uv" ]; then \
+		export PATH="$HOME/.local/bin:$PATH"; \
+	fi
 	@uv python pin 3.12 >/dev/null 2>&1
 	@uv venv >/dev/null 2>&1
 	@uv sync --all-extras --dev
@@ -97,6 +122,15 @@ clean: ## Cleanup temporary build artifacts
 	@find . -name '__pycache__' -exec rm -rf {} + >/dev/null 2>&1
 	@find . -name '.ipynb_checkpoints' -exec rm -rf {} + >/dev/null 2>&1
 	@echo "${OK} Working directory cleaned"
+
+# =============================================================================
+# Database Management
+# =============================================================================
+.PHONY: db-init
+db-init: ## Initialize the database schema using the standalone script
+	@echo "${INFO} Initializing the database schema via Python script..."
+	@uv run python tools/init_db.py
+	@echo "${OK} Database initialization script finished."
 
 # =============================================================================
 # Tests, Linting, Coverage
