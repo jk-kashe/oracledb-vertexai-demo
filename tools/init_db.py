@@ -1,4 +1,3 @@
-
 # Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A standalone script to initialize the database schema using sqlplus."""
+"""
+A truly standalone script to initialize the database schema using sqlplus.
+It reads the .env file directly without importing any application code.
+"""
 
 import os
 import subprocess
@@ -21,6 +23,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import structlog
+from dotenv import load_dotenv
 
 # Configure structlog for standalone script logging
 structlog.configure(
@@ -37,32 +40,15 @@ logger = structlog.get_logger()
 
 def initialize_database() -> None:
     """Connects to the database and executes the db_init.sql script."""
-    logger.info("Attempting to load application settings...")
-    try:
-        from dotenv import load_dotenv
-        from app.lib.settings import get_settings
-
-        # Explicitly load the .env file for this script
-        env_file = Path(".env")
-        if env_file.is_file():
-            logger.info("Found .env file, loading environment variables.")
-            load_dotenv(env_file, override=True)
-            logger.info(".env file loaded.")
-        else:
-            logger.warning(".env file not found. Using environment variables.")
-
-        settings = get_settings()
-        logger.info("Application settings loaded successfully.")
-
-    except ImportError as e:
-        logger.error(
-            "Could not import application components.",
-            error=str(e),
-            exc_info=True,
-        )
-        return
-
     logger.info("Starting database initialization...")
+
+    # Load environment variables from .env file
+    env_path = Path(".env")
+    if env_path.is_file():
+        logger.info(f"Loading environment variables from {env_path.resolve()}")
+        load_dotenv(dotenv_path=env_path, override=True)
+    else:
+        logger.warning(".env file not found. Relying on existing environment variables.")
 
     sql_script_path = Path(__file__).parent / "deploy" / "oracle" / "db_init.sql"
 
@@ -72,36 +58,42 @@ def initialize_database() -> None:
 
     logger.info("Found database script.", path=str(sql_script_path))
 
-    # Determine connection details based on configuration
-    if settings.db.URL:
-        logger.info("Using Autonomous Database configuration.")
-        parsed_url = urlparse(settings.db.URL)
+    # Determine connection details from environment variables
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        logger.info("Using DATABASE_URL for Autonomous Database configuration.")
+        parsed_url = urlparse(db_url)
         user = parsed_url.username
         password = parsed_url.password
         dsn = parsed_url.hostname
     else:
-        logger.info("Using standard database configuration.")
-        user = settings.db.USER
-        password = settings.db.PASSWORD
-        dsn = settings.db.DSN
+        logger.info("Using standard database configuration from environment.")
+        user = os.getenv("DATABASE_USER", "app")
+        password = os.getenv("DATABASE_PASSWORD", "super-secret")
+        dsn = os.getenv("DATABASE_DSN")
 
     if not all([user, password, dsn]):
         logger.error("Database credentials not found. Please check your .env file.")
         return
 
+    # Set TNS_ADMIN for wallet-based connections if the variable is set
+    env = os.environ.copy()
+    tns_admin_path = os.getenv("TNS_ADMIN")
+    if tns_admin_path:
+        env["TNS_ADMIN"] = tns_admin_path
+        logger.info("TNS_ADMIN found in environment.", tns_admin=tns_admin_path)
+
     try:
         # Construct the sqlplus command
+        # The password must be quoted to handle special characters.
         connect_string = f'{user}/"{password}"@{dsn}'
         command = ["sqlplus", "-S", connect_string, f"@{sql_script_path}"]
 
         logger.info("Executing command...", command=" ".join(command))
 
-        # Use Popen to stream output in real-time for better debugging
+        # Use Popen to stream output in real-time
         process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
         )
 
         logger.info("sqlplus process started. Reading output...")
@@ -110,18 +102,17 @@ def initialize_database() -> None:
         if process.stdout:
             for line in iter(process.stdout.readline, ""):
                 if line:
-                    logger.info("sqlplus stdout:", line=line.strip())
+                    logger.info("sqlplus", output=line.strip())
 
-        # Wait for the process to finish and capture stderr
+        # Wait for the process to finish and capture any remaining stderr
         stdout, stderr = process.communicate()
 
         if stderr:
-            logger.error("sqlplus stderr:", error=stderr.strip())
+            logger.error("sqlplus", error=stderr.strip())
 
         if process.returncode != 0:
             logger.error(
-                "Database initialization failed.",
-                return_code=process.returncode,
+                "Database initialization failed.", return_code=process.returncode
             )
         else:
             logger.info("Database schema initialized successfully. ✅")
@@ -129,7 +120,7 @@ def initialize_database() -> None:
     except FileNotFoundError:
         logger.error("`sqlplus` command not found. Please ensure the Oracle Instant Client is installed and in your PATH.")
     except Exception as e:
-        logger.error("An unexpected error occurred while running sqlplus.", error=str(e), exc_info=True)
+        logger.error("An unexpected error occurred.", error=str(e), exc_info=True)
 
 
 if __name__ == "__main__":
