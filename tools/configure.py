@@ -86,8 +86,35 @@ def configure_environment() -> None:
     logger.info("Starting interactive configuration...")
 
     # --- Get user input ---
-    wallet_zip_path_str = input("Enter the full path to your wallet.zip file: ").strip()
-    wallet_zip_path = Path(wallet_zip_path_str)
+    home_dir = Path.home()
+    wallet_files = list(home_dir.glob("Wallet*.zip"))
+
+    if len(wallet_files) == 1:
+        print(f"Found one wallet file: {wallet_files[0]}")
+        use_found_wallet = input("Use this wallet? (Y/n): ").strip().lower()
+        if use_found_wallet in ['', 'y', 'yes']:
+            wallet_zip_path = wallet_files[0]
+        else:
+            wallet_zip_path_str = input("Enter the full path to your wallet.zip file: ").strip()
+            wallet_zip_path = Path(wallet_zip_path_str)
+    elif len(wallet_files) > 1:
+        print("Found multiple wallet files:")
+        for i, f in enumerate(wallet_files):
+            print(f"  {i + 1}: {f}")
+        while True:
+            try:
+                choice = int(input(f"Select a wallet to use (1-{len(wallet_files)}): "))
+                if 1 <= choice <= len(wallet_files):
+                    wallet_zip_path = wallet_files[choice - 1]
+                    break
+                else:
+                    print("Invalid selection.")
+            except ValueError:
+                print("Please enter a number.")
+    else:
+        logger.info("No wallet files found in home directory.")
+        wallet_zip_path_str = input("Enter the full path to your wallet.zip file: ").strip()
+        wallet_zip_path = Path(wallet_zip_path_str)
 
     if not wallet_zip_path.is_file():
         logger.error("Wallet zip file not found at the specified path.", path=wallet_zip_path)
