@@ -30,60 +30,91 @@ help: ## Display this help text for Makefile
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 # =============================================================================
-# Installation and Environment Setup
+# Main Targets
 # =============================================================================
+
+.PHONY: install
+install: install-uv venv db-init load-data ## Install the project, set up the database, and load all data.
+	@echo "${OK} Project installation complete! 🎉"
+	@echo "${INFO} You can now run the application with: make run"
+
+.PHONY: load-data
+load-data: ## Load all sample data, fixtures, and generate vector embeddings.
+	@echo "${INFO} Loading database fixtures..."
+	@uv run app load-fixtures
+	@echo "${INFO} Generating and loading vector embeddings for products..."
+	@uv run app load-vectors
+	@echo "${OK} Data loading complete!"
+
+.PHONY: run
+run: ## Run the application server with hot-reloading.
+	@echo "${INFO} Starting the application server..."
+	@uv run granian --host 0.0.0.0 --port 8000 --reload app.asgi:app
+
+.PHONY: test
+test: ## Run the tests
+	@echo "${INFO} Running test cases... 🧪"
+	@uv run pytest -n 2 --dist=loadgroup tests
+	@echo "${OK} Tests complete ✨"
+
+
+# =============================================================================
+# Helper Targets (not intended for direct use)
+# =============================================================================
+
 .PHONY: install-uv
-install-uv:                                         ## Install uv and configure PATH automatically
+install-uv: # Install uv and configure PATH automatically
 	@echo "${INFO} Installing uv..."
 	@curl -LsSf https://astral.sh/uv/install.sh | sh
 	@echo "${INFO} Detecting installation path and updating ~/.bashrc..."
-	@UV_DIR=""; \
-	if [ -f "$$HOME/.cargo/bin/uv" ]; then \
+	@UV_DIR=""
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then \
 		UV_DIR="$$HOME/.cargo/bin"; \
 	elif [ -f "$$HOME/.local/bin/uv" ]; then \
 		UV_DIR="$$HOME/.local/bin"; \
-	fi; \
-	if [ -n "$$UV_DIR" ]; then \
-		if ! grep -qF "$$UV_DIR" "$$HOME/.bashrc"; then \
+	fi
+	@if [ -n "$$UV_DIR" ]; then \
+		if ! grep -q "$$UV_DIR" "$$HOME/.bashrc"; then \
 			echo '' >> "$$HOME/.bashrc"; \
 			echo '# Add Astral uv to the PATH' >> "$$HOME/.bashrc"; \
-			echo "export PATH=\"$$UV_DIR:$$PATH\"" >> "$$HOME/.bashrc"; \
-			echo "${OK} Added '$$UV_DIR' to your $$HOME/.bashrc."; \
-			echo "${INFO} Please run 'source $$HOME/.bashrc' or restart your shell to apply the changes permanently."; \
+			echo "export PATH=\"$$UV_DIR:\$$PATH\"" >> "$$HOME/.bashrc"; \
+			@echo "${OK} Added '$$UV_DIR' to your ~/.bashrc."; \
+			@echo "${INFO} Please run 'source ~/.bashrc' or restart your shell to apply the changes permanently."; \
 		else \
-			echo "${WARN} '$$UV_DIR' is already in your $$HOME/.bashrc."; \
+			@echo "${WARN} '$$UV_DIR' is already in your ~/.bashrc."; \
 		fi; \
 	else \
-		echo "${ERROR} Could not automatically find the uv installation directory. Please add it to your PATH manually."; \
+		@echo "${ERROR} Could not automatically find the uv installation directory. Please add it to your PATH manually."; \
 	fi
 	@echo "${OK} UV installation complete."
 
-.PHONY: install
-install: destroy clean ## Install the project, dependencies, and pre-commit
-	@echo "${INFO} Starting fresh installation..."
-	@if [ -f "$HOME/.cargo/bin/uv" ]; then \
-		export PATH="$HOME/.cargo/bin:$PATH"; \
-	elif [ -f "$HOME/.local/bin/uv" ]; then \
-		export PATH="$HOME/.local/bin:$PATH"; \
+.PHONY: venv
+venv: # Create virtual environment and install dependencies
+	@echo "${INFO} Creating virtual environment and installing dependencies..."
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	elif [ -f "$$HOME/.local/bin/uv" ]; then \
+		export PATH="$$HOME/.local/bin:$$PATH"; \
 	fi
 	@uv python pin 3.12 >/dev/null 2>&1
 	@uv venv >/dev/null 2>&1
 	@uv sync --all-extras --dev
-	@echo "${OK} Installation complete! 🎉"
+	@echo "${OK} Virtual environment and dependencies are set up."
+
+.PHONY: db-init
+db-init: # Initialize the database schema using the standalone script
+	@echo "${INFO} Initializing the database schema via Python script..."
+	@python tools/init_db.py
+	@echo "${OK} Database initialization script finished."
 
 .PHONY: destroy
-# Remove venv and node_modules
-
-destroy:
+destroy: ## Nuke the entire project environment (venv, etc.)
 	@echo "${INFO} Destroying virtual environment... 🗑️"
 	@uv run pre-commit clean >/dev/null 2>&1 || true
 	@rm -rf .venv
 	@rm -rf node_modules
 	@echo "${OK} Virtual environment destroyed 🗑️"
 
-# =============================================================================
-# Dependency Management
-# =============================================================================
 .PHONY: upgrade
 upgrade: ## Upgrade all dependencies to latest stable versions
 	@echo "${INFO} Updating all dependencies... 🔄"
@@ -93,27 +124,21 @@ upgrade: ## Upgrade all dependencies to latest stable versions
 	@echo "${OK} Updated Pre-commit hooks 🔄"
 
 .PHONY: lock
-lock: ## Rebuild lockfiles from scratch
+lock: # Rebuild lockfiles from scratch
 	@echo "${INFO} Rebuilding lockfiles... 🔄"
 	@uv lock --upgrade >/dev/null 2>&1
 	@echo "${OK} Lockfiles updated"
 
-# =============================================================================
-# Build and Release
-# =============================================================================
 .PHONY: build
-build: ## Build the package
+build: # Build the package
 	@echo "${INFO} Building package... 📦"
 	@uv build >/dev/null 2>&1
 	@echo "${OK} Package build complete"
 
-# =============================================================================
-# Cleaning and Maintenance
-# =============================================================================
 .PHONY: clean
-clean: ## Cleanup temporary build artifacts
+clean: # Cleanup temporary build artifacts
 	@echo "${INFO} Cleaning working directory... 🧹"
-	@rm -rf .pytest_cache .ruff_cache .hypothesis build/ -rf dist/ .eggs/ .coverage coverage.xml coverage.json htmlcov/ .pytest_cache tests/.pytest_cache tests/**/.pytest_cache .mypy_cache .unasyncd_cache/ .auto_pytabs_cache >/dev/null 2>&1
+	@rm -rf .pytest_cache .ruff_cache .hypothesis build/ -rf dist/ .eggs/ .coverage coverage.xml coverage.json htmlcov/ .pytest_cache tests/.pytest_cache tests/**/.pytest_cache .mypy_cache .unasyncd_cache/ .auto_pytabs_cache >/dev/null 2-1
 	@find . -name '*.egg-info' -exec rm -rf {} + >/dev/null 2>&1
 	@find . -type f -name '*.egg' -exec rm -f {} + >/dev/null 2>&1
 	@find . -name '*.pyc' -exec rm -f {} + >/dev/null 2>&1
@@ -123,26 +148,8 @@ clean: ## Cleanup temporary build artifacts
 	@find . -name '.ipynb_checkpoints' -exec rm -rf {} + >/dev/null 2>&1
 	@echo "${OK} Working directory cleaned"
 
-# =============================================================================
-# Database Management
-# =============================================================================
-.PHONY: db-init
-db-init: ## Initialize the database schema using the standalone script
-	@echo "${INFO} Initializing the database schema via Python script..."
-	@uv run python tools/init_db.py
-	@echo "${OK} Database initialization script finished."
-
-# =============================================================================
-# Tests, Linting, Coverage
-# =============================================================================
-.PHONY: test
-test: ## Run the tests
-	@echo "${INFO} Running test cases... 🧪"
-	@uv run pytest -n 2 --dist=loadgroup tests
-	@echo "${OK} Tests complete ✨"
-
 .PHONY: coverage
-coverage: ## Run tests with coverage report
+coverage: # Run tests with coverage report
 	@echo "${INFO} Running tests with coverage... 📊"
 	@uv run pytest --cov -n 2 --dist=loadgroup --quiet
 	@uv run coverage html >/dev/null 2>&1
@@ -160,5 +167,3 @@ format: ## Run code formatters
 	@echo "${INFO} Running code formatters... 🔧"
 	@uv run ruff check --fix --unsafe-fixes
 	@echo "${OK} Code formatting complete ✨"
-
-
