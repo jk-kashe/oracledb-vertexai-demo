@@ -49,7 +49,7 @@ load-data: ## Load all sample data, fixtures, and generate vector embeddings.
 .PHONY: run
 run: ## Run the application server with hot-reloading.
 	@echo "${INFO} Starting the application server..."
-	@uv run granian --host 0.0.0.0 --port 8000 --reload app.asgi:app
+	@uv run app run
 
 .PHONY: clean-db
 clean-db: ## Drop the database user and all associated objects.
