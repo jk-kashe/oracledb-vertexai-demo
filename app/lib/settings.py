@@ -206,8 +206,6 @@ class Settings:
         if env_file.is_file():
             from dotenv import load_dotenv
 
-            console.print(f"[yellow]Loading environment configuration from {dotenv_filename}[/]")
-
             load_dotenv(env_file, override=True)
         return Settings()
 
