@@ -24,7 +24,7 @@ END;
 -- Create the application user 'coffee' with a default password.
 -- The application connects as this user.
 PROMPT Creating user COFFEE...
-CREATE USER coffee IDENTIFIED BY "super-secret";
+CREATE USER coffee IDENTIFIED BY "Super-secret1";
 ALTER USER coffee QUOTA UNLIMITED ON data;
 
 -- Grant necessary privileges to the 'coffee' user

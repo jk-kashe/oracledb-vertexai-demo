@@ -50,7 +50,7 @@ class DatabaseSettings:
     )
     """Oracle Database User."""
     PASSWORD: str | None = field(
-        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "super-secret"),
+        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "Super-secret1"),
     )
     """Oracle Database Password."""
     HOST: str | None = field(
