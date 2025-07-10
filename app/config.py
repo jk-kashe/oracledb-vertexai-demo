@@ -56,9 +56,11 @@ if _settings.db.URL:
     # Autonomous Database configuration
     # Parse the URL to get its components
     parsed_url = urlparse(_settings.db.URL)
-    user = parsed_url.username
-    password = parsed_url.password
     dsn = parsed_url.hostname
+
+    # The application ALWAYS connects as the application user, not the admin from the URL.
+    user = _settings.db.USER
+    password = _settings.db.PASSWORD
 
     # Autonomous Database configuration with correctly parsed components
     oracle_sync = SyncOracleDatabaseConfig(
