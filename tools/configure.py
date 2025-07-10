@@ -51,6 +51,13 @@ def configure_environment() -> None:
     db_password = getpass.getpass("Enter your Autonomous Database ADMIN user password: ")
     wallet_password = getpass.getpass("Enter your wallet password: ")
 
+    print("\n--- Google Cloud Platform Configuration ---")
+    print("You can find your Project ID by selecting your project in the GCP Console.")
+    google_project_id = input("Enter your Google Cloud Project ID: ").strip()
+
+    print("\nYou can create or find your API Key at: https://console.cloud.google.com/apis/credentials")
+    google_api_key = getpass.getpass("Enter your Google Cloud API Key: ")
+
     # --- Configure Wallet ---
     logger.info("Configuring Oracle Wallet...")
     wallet_dir = Path("wallet")
@@ -102,6 +109,10 @@ def configure_environment() -> None:
                 f.write(f'DATABASE_URL="oracle+oracledb://ADMIN:{db_password}@ora_medium"\n')
             elif line.startswith("WALLET_PASSWORD="):
                 f.write(f'WALLET_PASSWORD="{wallet_password}"\n')
+            elif line.startswith("GOOGLE_PROJECT_ID="):
+                f.write(f'GOOGLE_PROJECT_ID={google_project_id}\n')
+            elif line.startswith("GOOGLE_API_KEY="):
+                f.write(f'GOOGLE_API_KEY={google_api_key}\n')
             else:
                 f.write(line)
     logger.info("Database and wallet passwords updated in .env file.")
@@ -110,9 +121,22 @@ def configure_environment() -> None:
     logger.info("Generating and adding SECRET_KEY...")
     try:
         secret_key = subprocess.check_output(["openssl", "rand", "-hex", "32"]).decode("utf-8").strip()
-        with open(env_path, "a") as f:
-            f.write(f"\nSECRET_KEY={secret_key}\n")
-        logger.info("SECRET_KEY generated and added to .env file.")
+        
+        with open(env_path, "r") as f:
+            lines = f.readlines()
+
+        key_exists = False
+        with open(env_path, "w") as f:
+            for line in lines:
+                if line.startswith("SECRET_KEY="):
+                    f.write(f"SECRET_KEY={secret_key}\n")
+                    key_exists = True
+                else:
+                    f.write(line)
+            if not key_exists:
+                f.write(f"\nSECRET_KEY={secret_key}\n")
+
+        logger.info("SECRET_KEY generated and updated in .env file.")
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         logger.error("Failed to generate SECRET_KEY. Please generate it manually.", error=str(e), exc_info=True)
 
