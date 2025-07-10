@@ -53,8 +53,12 @@ templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=J
 
 if _settings.db.URL:
     # Autonomous Database configuration
-    oracle_sync = SyncOracleDatabaseConfig(url=_settings.db.URL, wallet_password=_settings.db.WALLET_PASSWORD)
-    oracle_async = AsyncOracleDatabaseConfig(url=_settings.db.URL, wallet_password=_settings.db.WALLET_PASSWORD)
+    oracle_sync = SyncOracleDatabaseConfig(
+        pool_config=SyncOraclePoolConfig(url=_settings.db.URL, wallet_password=_settings.db.WALLET_PASSWORD)
+    )
+    oracle_async = AsyncOracleDatabaseConfig(
+        pool_config=AsyncOraclePoolConfig(url=_settings.db.URL, wallet_password=_settings.db.WALLET_PASSWORD)
+    )
 else:
     # Local/Standard Database configuration
     oracle_sync = SyncOracleDatabaseConfig(
