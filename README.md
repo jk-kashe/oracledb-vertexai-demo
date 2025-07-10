@@ -6,9 +6,19 @@ This fork of the original version is intended to work with Oracle Autonomous@GCP
 
 ## 🚀 Quick Start
 
-**Note**: run as oracle user! `sudo su - oracle`
+**Note:** Install autonomous db wallet (zip file) in oracle user home folder before continuing! 
 
 ```bash
+# Install required packages
+sudo apt install git unzip make
+
+sudo su - oracle #run as oracle user from this point
+
+#clone
+git clone https://github.com/jk-kashe/oracledb-vertexai-demo
+cd oracledb-vertexai-demo
+git checkout autonomous #will be moved to main
+
 # Setup environment - follow the prerequisites below for details
 make config
 
