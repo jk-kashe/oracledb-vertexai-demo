@@ -52,7 +52,13 @@ def configure_environment() -> None:
     wallet_password = getpass.getpass("Enter your wallet password: ")
 
     print("\n--- Google Cloud Platform Configuration ---")
-    print("You can find your Project ID by selecting your project in the GCP Console.")
+    print("To find your Google Cloud Project ID:")
+    print("1. Go to the Google Cloud Console: https://console.cloud.google.com/")
+    print("2. At the top of the page, next to the Google Cloud logo, you will see a project name.")
+    print("3. Click on the project name to open the 'Select a project' dialog.")
+    print("4. In the dialog, a list of your projects will appear.")
+    print("5. Find the project you are using for this demo and copy its 'ID' (e.g., 'single-clock-465407-s5').")
+    print("   Do not use the 'Name'.")
     google_project_id = input("Enter your Google Cloud Project ID: ").strip()
 
     print("\nYou can create or find your API Key at: https://console.cloud.google.com/apis/credentials")
