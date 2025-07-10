@@ -1,4 +1,3 @@
-
 # Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,14 +59,12 @@ def initialize_database() -> None:
 
     # Determine connection details based on configuration
     if settings.db.URL:
-        # Autonomous Database configuration
         logger.info("Using Autonomous Database configuration.")
         parsed_url = urlparse(settings.db.URL)
         user = parsed_url.username
         password = parsed_url.password
         dsn = parsed_url.hostname
     else:
-        # Standard Database configuration
         logger.info("Using standard database configuration.")
         user = settings.db.USER
         password = settings.db.PASSWORD
@@ -79,36 +76,45 @@ def initialize_database() -> None:
 
     try:
         # Construct the sqlplus command
-        command = [
-            "sqlplus",
-            "-S",
-            f"{user}/{password}@{dsn}",
-            f"@{sql_script_path}",
-        ]
+        connect_string = f'{user}/"{password}"@{dsn}'
+        command = ["sqlplus", "-S", connect_string, f"@{sql_script_path}"]
 
-        # Execute the command
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        logger.info("Executing command...", command=" ".join(command))
 
-        # Log the output
-        if result.stdout:
-            logger.info("sqlplus output:", output=result.stdout)
-        if result.stderr:
-            logger.error("sqlplus error:", error=result.stderr)
+        # Use Popen to stream output in real-time for better debugging
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
 
-        logger.info("Database schema initialized successfully. ✅")
+        logger.info("sqlplus process started. Reading output...")
+
+        # Stream and log stdout
+        if process.stdout:
+            for line in iter(process.stdout.readline, ""):
+                if line:
+                    logger.info("sqlplus stdout:", line=line.strip())
+
+        # Wait for the process to finish and capture stderr
+        stdout, stderr = process.communicate()
+
+        if stderr:
+            logger.error("sqlplus stderr:", error=stderr.strip())
+
+        if process.returncode != 0:
+            logger.error(
+                "Database initialization failed.",
+                return_code=process.returncode,
+            )
+        else:
+            logger.info("Database schema initialized successfully. ✅")
 
     except FileNotFoundError:
         logger.error("`sqlplus` command not found. Please ensure the Oracle Instant Client is installed and in your PATH.")
-    except subprocess.CalledProcessError as e:
-        logger.error(
-            "An error occurred while running sqlplus.",
-            return_code=e.returncode,
-            stdout=e.stdout,
-            stderr=e.stderr,
-            exc_info=True,
-        )
     except Exception as e:
-        logger.error("An unexpected error occurred.", error=str(e), exc_info=True)
+        logger.error("An unexpected error occurred while running sqlplus.", error=str(e), exc_info=True)
 
 
 if __name__ == "__main__":
