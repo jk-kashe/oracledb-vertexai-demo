@@ -46,7 +46,7 @@ class DatabaseSettings:
 
     # For Local/Standard Connection
     USER: str | None = field(
-        default_factory=lambda: os.getenv("DATABASE_USER", "app"),
+        default_factory=lambda: os.getenv("DATABASE_USER", "coffee"),
     )
     """Oracle Database User."""
     PASSWORD: str | None = field(
