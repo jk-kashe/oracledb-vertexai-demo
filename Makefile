@@ -54,7 +54,7 @@ run: ## Run the application server with hot-reloading.
 .PHONY: clean-db
 clean-db: ## Drop the database user and all associated objects.
 	@echo "${INFO} Cleaning the database..."
-	@python tools/clean_db.py
+	@uv run python tools/clean_db.py
 	@echo "${OK} Database cleaning script finished."
 
 .PHONY: test
@@ -110,7 +110,7 @@ venv: # Create virtual environment and install dependencies
 .PHONY: db-init
 db-init: # Initialize the database schema using the standalone script
 	@echo "${INFO} Initializing the database schema via Python script..."
-	@python tools/init_db.py
+	@uv run python tools/init_db.py
 	@echo "${OK} Database initialization script finished."
 
 .PHONY: destroy
