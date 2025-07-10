@@ -1,3 +1,4 @@
+
 # Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,14 +37,28 @@ logger = structlog.get_logger()
 
 def initialize_database() -> None:
     """Connects to the database and executes the db_init.sql script."""
+    logger.info("Attempting to load application settings...")
     try:
+        from dotenv import load_dotenv
         from app.lib.settings import get_settings
 
+        # Explicitly load the .env file for this script
+        env_file = Path(".env")
+        if env_file.is_file():
+            logger.info("Found .env file, loading environment variables.")
+            load_dotenv(env_file, override=True)
+            logger.info(".env file loaded.")
+        else:
+            logger.warning(".env file not found. Using environment variables.")
+
         settings = get_settings()
-    except ImportError:
+        logger.info("Application settings loaded successfully.")
+
+    except ImportError as e:
         logger.error(
-            "Could not import application components. "
-            "Please ensure this script is run within the project's virtual environment (e.g., using 'uv run')."
+            "Could not import application components.",
+            error=str(e),
+            exc_info=True,
         )
         return
 
