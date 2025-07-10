@@ -37,24 +37,24 @@ install-uv:                                         ## Install uv and configure 
 	@echo "${INFO} Installing uv..."
 	@curl -LsSf https://astral.sh/uv/install.sh | sh
 	@echo "${INFO} Detecting installation path and updating ~/.bashrc..."
-	@UV_DIR=""
-	@if [ -f "$HOME/.cargo/bin/uv" ]; then \
-		UV_DIR="$HOME/.cargo/bin"; \
-	elif [ -f "$HOME/.local/bin/uv" ]; then \
-		UV_DIR="$HOME/.local/bin"; \
-	fi
-	@if [ -n "$UV_DIR" ]; then \
-		if ! grep -q "$UV_DIR" "$HOME/.bashrc"; then \
-			echo '' >> "$HOME/.bashrc"; \
-			echo '# Add Astral uv to the PATH' >> "$HOME/.bashrc"; \
-			echo "export PATH=\"$UV_DIR:\$PATH\"" >> "$HOME/.bashrc"; \
-			@echo "${OK} Added '$UV_DIR' to your ~/.bashrc."; \
-			@echo "${INFO} Please run 'source ~/.bashrc' or restart your shell to apply the changes permanently."; \
+	@UV_DIR=""; \
+	if [ -f "$$HOME/.cargo/bin/uv" ]; then \
+		UV_DIR="$$HOME/.cargo/bin"; \
+	elif [ -f "$$HOME/.local/bin/uv" ]; then \
+		UV_DIR="$$HOME/.local/bin"; \
+	fi; \
+	if [ -n "$$UV_DIR" ]; then \
+		if ! grep -qF "$$UV_DIR" "$$HOME/.bashrc"; then \
+			echo '' >> "$$HOME/.bashrc"; \
+			echo '# Add Astral uv to the PATH' >> "$$HOME/.bashrc"; \
+			echo "export PATH=\"$$UV_DIR:$$PATH\"" >> "$$HOME/.bashrc"; \
+			echo "${OK} Added '$$UV_DIR' to your $$HOME/.bashrc."; \
+			echo "${INFO} Please run 'source $$HOME/.bashrc' or restart your shell to apply the changes permanently."; \
 		else \
-			@echo "${WARN} '$UV_DIR' is already in your ~/.bashrc."; \
+			echo "${WARN} '$$UV_DIR' is already in your $$HOME/.bashrc."; \
 		fi; \
 	else \
-		@echo "${ERROR} Could not automatically find the uv installation directory. Please add it to your PATH manually."; \
+		echo "${ERROR} Could not automatically find the uv installation directory. Please add it to your PATH manually."; \
 	fi
 	@echo "${OK} UV installation complete."
 
