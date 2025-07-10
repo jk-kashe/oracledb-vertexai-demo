@@ -16,7 +16,7 @@ BEGIN
     IF v_user_count > 0 THEN
         -- Kill any active sessions for the user before dropping
         FOR r IN (SELECT sid, serial# FROM v$session WHERE username = 'COFFEE') LOOP
-            EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION \'' || r.sid || ',' || r.serial# || '\' IMMEDIATE';
+            EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION \'' || TO_CHAR(r.sid) || ',' || TO_CHAR(r.serial#) || '\' IMMEDIATE';
         END LOOP;
         DBMS_OUTPUT.PUT_LINE('User COFFEE exists. Dropping user...');
         EXECUTE IMMEDIATE 'DROP USER coffee CASCADE';
