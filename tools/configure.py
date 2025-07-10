@@ -61,7 +61,17 @@ def configure_environment() -> None:
     print("   Do not use the 'Name'.")
     google_project_id = input("Enter your Google Cloud Project ID: ").strip()
 
-    print("\nYou can create or find your API Key at: https://console.cloud.google.com/apis/credentials")
+    print("\n--- Google Cloud API Key ---")
+    print("To create or find your API Key:")
+    print("1. Go to the GCP Credentials page: https://console.cloud.google.com/apis/credentials")
+    print("2. Click the '+ CREATE CREDENTIALS' button at the top.")
+    print("3. Select 'API key' from the dropdown menu.")
+    print("4. A dialog box will appear showing your new key. Copy this key.")
+    print("\nIt is highly recommended to restrict your API key for security:")
+    print("1. In the dialog box, click 'EDIT API KEY'.")
+    print("2. Under 'API restrictions', select 'Restrict key'.")
+    print("3. From the dropdown, select the 'Vertex AI API'.")
+    print("   (You may need to enable the Vertex AI API in the API Library first.)")
     google_api_key = getpass.getpass("Enter your Google Cloud API Key: ")
 
     # --- Configure Wallet ---
