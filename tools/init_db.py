@@ -1,4 +1,3 @@
-
 # Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,20 +16,28 @@
 
 import os
 import subprocess
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
 import structlog
 from dotenv import load_dotenv
 
-# Configure structlog for standalone script logging
+# Configure basic logging to show INFO level messages.
+# This is the critical line that was missing.
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+# Configure structlog for structured logging
 structlog.configure(
     processors=[
+        structlog.stdlib.filter_by_level,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.dev.ConsoleRenderer(),
     ],
     logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
 )
 
 logger = structlog.get_logger()
@@ -92,7 +99,6 @@ def initialize_database() -> None:
         logger.info("Executing sqlplus and piping script content to stdin...")
 
         # Use Popen and communicate to safely handle stdin, stdout, and stderr
-        # This is the robust way to prevent deadlocks.
         process = subprocess.Popen(
             command, 
             stdin=subprocess.PIPE, 
