@@ -37,6 +37,7 @@ from litestar_oracledb import (
 )
 
 from app.lib.settings import BASE_DIR, get_settings
+from urllib.parse import urlparse
 
 _settings = get_settings()
 
@@ -53,15 +54,29 @@ templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=J
 
 if _settings.db.URL:
     # Autonomous Database configuration
+    # Parse the URL to get its components
+    parsed_url = urlparse(_settings.db.URL)
+    user = parsed_url.username
+    password = parsed_url.password
+    # The DSN is typically the hostname/path part of the URL
+    dsn = parsed_url.netloc + parsed_url.path
+
+    # Autonomous Database configuration with parsed components
     oracle_sync = SyncOracleDatabaseConfig(
-        url=_settings.db.URL,
-        wallet_password=_settings.db.WALLET_PASSWORD,
-        pool_config=SyncOraclePoolConfig()  # This can be empty or have pool-specific args
+        pool_config=SyncOraclePoolConfig(
+            user=user,
+            password=password,
+            dsn=dsn,
+            wallet_password=_settings.db.WALLET_PASSWORD,
+        )
     )
     oracle_async = AsyncOracleDatabaseConfig(
-        url=_settings.db.URL,
-        wallet_password=_settings.db.WALLET_PASSWORD,
-        pool_config=AsyncOraclePoolConfig() # This can be empty or have pool-specific args
+        pool_config=AsyncOraclePoolConfig(
+            user=user,
+            password=password,
+            dsn=dsn,
+            wallet_password=_settings.db.WALLET_PASSWORD,
+        )
     )
 else:
     # Local/Standard Database configuration
