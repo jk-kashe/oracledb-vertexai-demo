@@ -32,13 +32,13 @@ help: ## Display this help text for Makefile
 .PHONY: config
 config: install-uv venv ## Interactively configure the project environment.
 	@echo "${INFO} Starting interactive configuration..."
-	@if [ -f "$HOME/.cargo/bin/uv" ]; then \
-		export PATH="$HOME/.cargo/bin:$PATH"; \
-	elif [ -f "$HOME/.local/bin/uv" ]; then \
-		export PATH="$HOME/.local/bin:$PATH"; \
+	@if [ -f "$HOME/.cargo/bin/uv" ]; then 
+		export PATH="$HOME/.cargo/bin:$PATH"; 
+	elif [ -f "$HOME/.local/bin/uv" ]; then 
+		export PATH="$HOME/.local/bin:$PATH"; 
 	fi
 	@uv run python tools/configure.py
-	@echo "${OK} Configuration script finished."
+	@echo "${OK} Configuration script finished." 
 
 # =============================================================================
 # Main Targets
@@ -95,14 +95,7 @@ install-uv: # Install uv and configure PATH automatically
 			echo '' >> "$$HOME/.bashrc"; \
 			echo '# Add Astral uv to the PATH' >> "$$HOME/.bashrc"; \
 			echo "export PATH=\"$$UV_DIR:\$$PATH\"" >> "$$HOME/.bashrc"; \
-			@echo "${OK} Added '$$UV_DIR' to your ~/.bashrc."; \
-			@echo "${INFO} Please run 'source ~/.bashrc' or restart your shell to apply the changes permanently."; \
-		else \
-			@echo "${WARN} '$$UV_DIR' is already in your ~/.bashrc."; \
-		fi; \
-	else \
-		@echo "${ERROR} Could not automatically find the uv installation directory. Please add it to your PATH manually."; \
-	fi
+			echo "${OK} Added '$UV_DIR' to your ~/.bashrc.";             echo "${INFO} Please run 'source ~/.bashrc' or restart your shell to apply the changes permanently.";         else             echo "${WARN} '$UV_DIR' is already in your ~/.bashrc.";         fi;     else         echo "${ERROR} Could not automatically find the uv installation directory. Please add it to your PATH manually.";     fi
 	@echo "${OK} UV installation complete."
 
 .PHONY: venv
