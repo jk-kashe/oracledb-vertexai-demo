@@ -52,6 +52,11 @@ install: install-uv venv db-init load-data ## Install the project, set up the da
 .PHONY: load-data
 load-data: ## Load all sample data, fixtures, and generate vector embeddings.
 	@echo "${INFO} Loading database fixtures..."
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then 
+		export PATH="$$HOME/.cargo/bin:$$PATH"; 
+	elif [ -f "$$HOME/.local/bin/uv" ]; then 
+		export PATH="$$HOME/.local/bin:$$PATH"; 
+	fi
 	@uv run app load-fixtures
 	@echo "${INFO} Generating and loading vector embeddings for products..."
 	@uv run app load-vectors
@@ -65,6 +70,11 @@ run: ## Run the application server with hot-reloading.
 .PHONY: clean-db
 clean-db: ## Drop the database user and all associated objects.
 	@echo "${INFO} Cleaning the database..."
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then 
+		export PATH="$$HOME/.cargo/bin:$$PATH"; 
+	elif [ -f "$$HOME/.local/bin/uv" ]; then 
+		export PATH="$$HOME/.local/bin:$$PATH"; 
+	fi
 	@uv run python tools/clean_db.py
 	@echo "${OK} Database cleaning script finished."
 
@@ -114,6 +124,11 @@ venv: # Create virtual environment and install dependencies
 .PHONY: db-init
 db-init: # Initialize the database schema using the standalone script
 	@echo "${INFO} Initializing the database schema via Python script..."
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then 
+		export PATH="$$HOME/.cargo/bin:$$PATH"; 
+	elif [ -f "$$HOME/.local/bin/uv" ]; then 
+		export PATH="$$HOME/.local/bin:$$PATH"; 
+	fi
 	@uv run python tools/init_db.py
 	@echo "${OK} Database initialization script finished."
 
