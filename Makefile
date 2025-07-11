@@ -8,6 +8,11 @@ SHELL := /bin/bash
 .ONESHELL:
 .EXPORT_ALL_VARIABLES:
 MAKEFLAGS += --no-print-directory
+ORA_CLIENT_ENV := $(HOME)/.ora_client.env
+
+# Function to source environment file if it exists
+-include $(ORA_CLIENT_ENV)
+
 
 # ----------------------------------------------------------------------------
 # Display Formatting and Colors
