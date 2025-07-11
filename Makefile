@@ -8,10 +8,7 @@ SHELL := /bin/bash
 .ONESHELL:
 .EXPORT_ALL_VARIABLES:
 MAKEFLAGS += --no-print-directory
-ORA_CLIENT_ENV := $(HOME)/.ora_client.env
 
-# Function to source environment file if it exists
--include $(ORA_CLIENT_ENV)
 
 
 # ----------------------------------------------------------------------------
@@ -57,10 +54,11 @@ install: install-uv venv db-init load-data ## Install the project, set up the da
 .PHONY: load-data
 load-data: ## Load all sample data, fixtures, and generate vector embeddings.
 	@echo "${INFO} Loading database fixtures..."
-	@if [ -f "$$HOME/.cargo/bin/uv" ]; then 
-		export PATH="$$HOME/.cargo/bin:$$PATH"; 
-	elif [ -f "$$HOME/.local/bin/uv" ]; then 
-		export PATH="$$HOME/.local/bin:$$PATH"; 
+	@if [ -f "$$HOME/.ora_client.env" ]; then source $$HOME/.ora_client.env; fi
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	elif [ -f "$$HOME/.local/bin/uv" ]; then \
+		export PATH="$$HOME/.local/bin:$$PATH"; \
 	fi
 	@uv run app load-fixtures
 	@echo "${INFO} Generating and loading vector embeddings for products..."
@@ -70,6 +68,7 @@ load-data: ## Load all sample data, fixtures, and generate vector embeddings.
 .PHONY: run
 run: ## Run the application server with hot-reloading.
 	@echo "${INFO} Starting the application server..."
+	@if [ -f "$$HOME/.ora_client.env" ]; then source $$HOME/.ora_client.env; fi
 	@if [ -f "$$HOME/.cargo/bin/uv" ]; then \
 		export PATH="$$HOME/.cargo/bin:$$PATH"; \
 	elif [ -f "$$HOME/.local/bin/uv" ]; then \
@@ -80,10 +79,11 @@ run: ## Run the application server with hot-reloading.
 .PHONY: clean-db
 clean-db: ## Drop the database user and all associated objects.
 	@echo "${INFO} Cleaning the database..."
-	@if [ -f "$$HOME/.cargo/bin/uv" ]; then 
-		export PATH="$$HOME/.cargo/bin:$$PATH"; 
-	elif [ -f "$$HOME/.local/bin/uv" ]; then 
-		export PATH="$$HOME/.local/bin:$$PATH"; 
+	@if [ -f "$$HOME/.ora_client.env" ]; then source $$HOME/.ora_client.env; fi
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	elif [ -f "$$HOME/.local/bin/uv" ]; then \
+		export PATH="$$HOME/.local/bin:$$PATH"; \
 	fi
 	@uv run python tools/clean_db.py
 	@echo "${OK} Database cleaning script finished."
@@ -139,13 +139,15 @@ venv: # Create virtual environment and install dependencies
 .PHONY: db-init
 db-init: # Initialize the database schema using the standalone script
 	@echo "${INFO} Initializing the database schema via Python script..."
-	@if [ -f "$$HOME/.cargo/bin/uv" ]; then 
-		export PATH="$$HOME/.cargo/bin:$$PATH"; 
-	elif [ -f "$$HOME/.local/bin/uv" ]; then 
-		export PATH="$$HOME/.local/bin:$$PATH"; 
+	@if [ -f "$$HOME/.ora_client.env" ]; then source $$HOME/.ora_client.env; fi
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	elif [ -f "$$HOME/.local/bin/uv" ]; then \
+		export PATH="$$HOME/.local/bin:$$PATH"; \
 	fi
 	@uv run python tools/init_db.py
 	@echo "${OK} Database initialization script finished."
+
 
 .PHONY: destroy
 destroy: ## Nuke the entire project environment (venv, etc.)
