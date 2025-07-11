@@ -32,6 +32,11 @@ help: ## Display this help text for Makefile
 .PHONY: config
 config: install-uv venv ## Interactively configure the project environment.
 	@echo "${INFO} Starting interactive configuration..."
+	@if [ -f "$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$HOME/.cargo/bin:$PATH"; \
+	elif [ -f "$HOME/.local/bin/uv" ]; then \
+		export PATH="$HOME/.local/bin:$PATH"; \
+	fi
 	@uv run python tools/configure.py
 	@echo "${OK} Configuration script finished."
 
