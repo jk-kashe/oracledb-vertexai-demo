@@ -182,7 +182,7 @@ def configure_environment() -> None:
     if tnsnames_ora_path.exists():
         tns_content = tnsnames_ora_path.read_text()
         # Using regex to find all service names
-        service_names = re.findall(r'^[a-zA-Z0-9_]+\s*=', tns_content, re.MULTILINE)
+        service_names = re.findall(r'^([a-zA-Z0-9_]+)\s*=', tns_content, re.MULTILINE)
         
         if not service_names:
             logger.error("No database services found in tnsnames.ora.")
