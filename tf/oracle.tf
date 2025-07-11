@@ -7,6 +7,8 @@ resource "random_password" "oracle_adb" {
 }
 
 resource "google_oracle_database_autonomous_database" "oracle"{
+  deletion_protection = false
+  
   autonomous_database_id = var.oracle_adb_instance_name
   display_name = var.oracle_adb_instance_name
   location = var.region
@@ -33,8 +35,8 @@ locals {
 }
 
 # Secrets
-resource "google_secret_manager_secret" "oracle_tnsnames" {
-  secret_id = "${google_oracle_database_autonomous_database.oracle.autonomous_database_id}-tnsnames"
+resource "google_secret_manager_secret" "oracle_database_url" {
+  secret_id = "${google_oracle_database_autonomous_database.oracle.autonomous_database_id}-database-url"
 
   replication {
     user_managed {
@@ -45,7 +47,7 @@ resource "google_secret_manager_secret" "oracle_tnsnames" {
   } 
 }
 
-resource "google_secret_manager_secret_version" "oracle_tnsnames" {
-  secret = google_secret_manager_secret.oracle_tnsnames.id
+resource "google_secret_manager_secret_version" "oracle_database_url" {
+  secret = google_secret_manager_secret.oracle_database_url.id
   secret_data = local.oracle_database_url
 }

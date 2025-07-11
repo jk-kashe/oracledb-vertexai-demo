@@ -10,3 +10,7 @@ output "oracle_adb_password" {
 output "coffee_url" {
     value = google_cloud_run_v2_service.coffee.uri
 }
+
+output "test" {
+    value = local.oracle_database_url
+}
