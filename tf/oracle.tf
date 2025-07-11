@@ -33,12 +33,19 @@ locals {
 }
 
 # Secrets
-resource "google_secret_manager_regional_secret" "oracle_tnsnames" {
+resource "google_secret_manager_secret" "oracle_tnsnames" {
   secret_id = "${google_oracle_database_autonomous_database.oracle.autonomous_database_id}-tnsnames"
-  location = var.region
+
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  } 
 }
 
-resource "google_secret_manager_regional_secret_version" "oracle_tnsnames" {
-  secret = google_secret_manager_regional_secret.oracle_tnsnames.id
+resource "google_secret_manager_secret_version" "oracle_tnsnames" {
+  secret = google_secret_manager_secret.oracle_tnsnames.id
   secret_data = local.oracle_database_url
 }

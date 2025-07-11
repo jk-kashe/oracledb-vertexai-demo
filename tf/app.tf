@@ -1,7 +1,7 @@
 # Repository
 resource "google_artifact_registry_repository" "container_images" {
   depends_on = [time_sleep.wait_for_api]
-  
+
   location      = var.region
   repository_id = "container-images"
   description   = "Artifact Registry repository for container images"
@@ -29,17 +29,24 @@ resource "google_apikeys_key" "coffee" {
   }
 }
 
-resource "google_secret_manager_regional_secret" "coffee_api_key" {
+resource "google_secret_manager_secret" "coffee_api_key" {
   depends_on = [time_sleep.wait_for_api]
 
   secret_id = "coffee-api-key"
-  location = var.region
+
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  } 
 }
 
-resource "google_secret_manager_regional_secret_version" "coffee_api_key" {
+resource "google_secret_manager_secret_version" "coffee_api_key" {
   depends_on = [time_sleep.wait_for_api]
 
-  secret = google_secret_manager_regional_secret.coffee_api_key.id
+  secret = google_secret_manager_secret.coffee_api_key.id
   secret_data = google_apikeys_key.coffee.key_string
 }
 
@@ -55,20 +62,20 @@ resource "google_project_iam_member" "coffee" {
   member = google_service_account.coffee.member
 }
 
-resource "google_secret_manager_regional_secret_iam_member" "coffee_oracle_tnsnames" {
-  secret_id = google_secret_manager_regional_secret.oracle_tnsnames.id
+resource "google_secret_manager_secret_iam_member" "coffee_oracle_tnsnames" {
+  secret_id = google_secret_manager_secret.oracle_tnsnames.id
   role = "roles/secretmanager.secretAccessor"
   member = google_service_account.coffee.member
 }
 
-resource "google_secret_manager_regional_secret_iam_member" "coffee_api_key" {
-  secret_id = google_secret_manager_regional_secret.coffee_api_key.id
+resource "google_secret_manager_secret_iam_member" "coffee_api_key" {
+  secret_id = google_secret_manager_secret.coffee_api_key.id
   role = "roles/secretmanager.secretAccessor"
   member = google_service_account.coffee.member
 }
 
-resource "google_secret_manager_regional_secret_iam_member" "coffee_secret_key" {
-  secret_id = google_secret_manager_regional_secret.coffee_secret_key.id
+resource "google_secret_manager_secret_iam_member" "coffee_secret_key" {
+  secret_id = google_secret_manager_secret.coffee_secret_key.id
   role = "roles/secretmanager.secretAccessor"
   member = google_service_account.coffee.member
 }
@@ -94,18 +101,26 @@ resource "random_password" "coffee_secret_key" {
   special = false
 }
 
-resource "google_secret_manager_regional_secret" "coffee_secret_key" {
+resource "google_secret_manager_secret" "coffee_secret_key" {
   secret_id = "coffee-secret-key"
-  location = var.region
+
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  } 
 }
 
-resource "google_secret_manager_regional_secret_version" "coffee_secret_key" {
-  secret = google_secret_manager_regional_secret.coffee_secret_key.id
+resource "google_secret_manager_secret_version" "coffee_secret_key" {
+  secret = google_secret_manager_secret.coffee_secret_key.id
   secret_data = random_password.coffee_secret_key.result
 }
 
 resource "google_cloud_run_v2_service" "coffee" {
   depends_on = [null_resource.load_coffee_data, null_resource.coffee_build]
+  deletion_protection = false
 
   name = "coffee"
   location = var.region
@@ -124,8 +139,8 @@ resource "google_cloud_run_v2_service" "coffee" {
 
         value_source {
           secret_key_ref {
-            secret = google_secret_manager_regional_secret_version.oracle_tnsnames.secret
-            version = google_secret_manager_regional_secret_version.oracle_tnsnames.version
+            secret = google_secret_manager_secret.oracle_tnsnames.secret_id
+            version = google_secret_manager_secret_version.oracle_tnsnames.version
           }
         }
       }
@@ -150,8 +165,8 @@ resource "google_cloud_run_v2_service" "coffee" {
 
         value_source {
           secret_key_ref {
-            secret = google_secret_manager_regional_secret_version.coffee_api_key.secret
-            version = google_secret_manager_regional_secret_version.coffee_api_key.version
+            secret = google_secret_manager_secret.coffee_api_key.secret_id
+            version = google_secret_manager_secret_version.coffee_api_key.version
           }
         }
       }
@@ -178,12 +193,11 @@ resource "google_cloud_run_v2_service" "coffee" {
 
       env {
         name = "SECRET_KEY"
-        value = random_password.coffee_secret_key.result
 
         value_source {
           secret_key_ref {
-            secret = google_secret_manager_regional_secret_version.coffee_secret_key.secret
-            version = google_secret_manager_regional_secret_version.coffee_secret_key.version
+            secret = google_secret_manager_secret.coffee_secret_key.secret_id
+            version = google_secret_manager_secret_version.coffee_secret_key.version
           }
         }
       }
@@ -194,6 +208,7 @@ resource "google_cloud_run_v2_service" "coffee" {
     vpc_access {
       network_interfaces {
         network = google_compute_network.oracle.id
+        subnetwork = google_compute_subnetwork.oracle.id
       }
     }
   }
