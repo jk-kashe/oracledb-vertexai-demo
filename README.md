@@ -4,6 +4,10 @@ An intelligent coffee recommendation system showcasing Oracle 23AI vector search
 
 This fork of the original version is intended to work with Oracle Autonomous@GCP.
 
+## Terraform pre-requisites
+1. Create a new Google Cloud project.
+2. Subscribe to Oracle Database@Google Cloud and complete account linking.
+
 ## 🚀 Quick Start
 
 **Note: Install autonomous db wallet (zip file) in oracle user home folder before continuing!**
