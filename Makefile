@@ -70,6 +70,11 @@ load-data: ## Load all sample data, fixtures, and generate vector embeddings.
 .PHONY: run
 run: ## Run the application server with hot-reloading.
 	@echo "${INFO} Starting the application server..."
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	elif [ -f "$$HOME/.local/bin/uv" ]; then \
+		export PATH="$$HOME/.local/bin:$$PATH"; \
+	fi
 	@uv run app run
 
 .PHONY: clean-db
@@ -86,6 +91,11 @@ clean-db: ## Drop the database user and all associated objects.
 .PHONY: test
 test: ## Run the tests
 	@echo "${INFO} Running test cases... 🧪"
+	@if [ -f "$$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$$HOME/.cargo/bin:$$PATH"; \
+	elif [ -f "$$HOME/.local/bin/uv" ]; then \
+		export PATH="$$HOME/.local/bin:$$PATH"; \
+	fi
 	@uv run pytest -n 2 --dist=loadgroup tests
 	@echo "${OK} Tests complete ✨"
 
@@ -181,6 +191,11 @@ clean: # Cleanup temporary build artifacts
 .PHONY: coverage
 coverage: # Run tests with coverage report
 	@echo "${INFO} Running tests with coverage... 📊"
+	@if [ -f "$HOME/.cargo/bin/uv" ]; then \
+		export PATH="$HOME/.cargo/bin:$PATH"; \
+	elif [ -f "$HOME/.local/bin/uv" ]; then \
+		export PATH="$HOME/.local/bin:$PATH"; \
+	fi
 	@uv run pytest --cov -n 2 --dist=loadgroup --quiet
 	@uv run coverage html >/dev/null 2>&1
 	@uv run coverage xml >/dev/null 2>&1
