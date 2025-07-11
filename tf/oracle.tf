@@ -29,7 +29,7 @@ resource "google_oracle_database_autonomous_database" "oracle"{
 
 locals {
   oracle_database_url = "oracle+oracledb://admin:${random_password.oracle_adb.result}@${google_oracle_database_autonomous_database.oracle.autonomous_database_id}"
-  oracle_profiles = {for profile in google_oracle_database_autonomous_database.oracle.properties[0].connection_strings[0].profiles: lower(profile.consumer_group) => profile}
+  oracle_profiles = {for profile in google_oracle_database_autonomous_database.oracle.properties[0].connection_strings[0].profiles: lower(profile.consumer_group) => profile if profile.tls_authentication == "SERVER"}
 }
 
 # Secrets
