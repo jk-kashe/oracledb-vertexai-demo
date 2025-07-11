@@ -77,13 +77,14 @@ resource "null_resource" "load_coffee_data" {
       --project=${var.project_id} \
       --command='
       sudo apt install -y git unzip make
-      sudo su - oracle
+      sudo su - oracle <<EOF
       export DATABASE_URL="${local.oracle_database_url}"
       rm -rf oracledb-vertexai-demo
       git clone ${var.git_repo}
       cd oracledb-vertexai-demo
       git checkout ${var.git_branch}
       make install
+EOF
       '
     EOT
   }
