@@ -15,6 +15,7 @@
 """An interactive script to configure the project environment with masked input."""
 
 import os
+import re
 import subprocess
 import shutil
 import sys
@@ -175,6 +176,41 @@ def configure_environment() -> None:
         logger.error("Failed to configure wallet.", error=str(e), exc_info=True)
         return
 
+    # --- Choose TNS service ---
+    tnsnames_ora_path = wallet_dir / "tnsnames.ora"
+    db_service = ""
+    if tnsnames_ora_path.exists():
+        tns_content = tnsnames_ora_path.read_text()
+        # Using regex to find all service names
+        service_names = re.findall(r'^[a-zA-Z0-9_]+\s*=', tns_content, re.MULTILINE)
+        
+        if not service_names:
+            logger.error("No database services found in tnsnames.ora.")
+            return
+        
+        if len(service_names) == 1:
+            db_service = service_names[0]
+            logger.info(f"Using the only available database service: {db_service}")
+        else:
+            print("\n--- Database Service Selection ---")
+            print("Found multiple database services in your tnsnames.ora file:")
+            for i, name in enumerate(service_names):
+                print(f"  {i + 1}: {name}")
+            
+            while True:
+                try:
+                    choice = int(input(f"Select a service to use (1-{len(service_names)}): "))
+                    if 1 <= choice <= len(service_names):
+                        db_service = service_names[choice - 1]
+                        break
+                    else:
+                        print("Invalid selection.")
+                except ValueError:
+                    print("Please enter a number.")
+    else:
+        logger.error("tnsnames.ora not found in wallet directory.")
+        return
+
     # --- Create and populate .env file ---
     logger.info("Creating and configuring .env file...")
     env_autonomous_path = Path(".env.autonomous")
@@ -192,7 +228,7 @@ def configure_environment() -> None:
     with open(env_path, "w") as f:
         for line in lines:
             if line.startswith("DATABASE_URL="):
-                f.write(f'DATABASE_URL="oracle+oracledb://ADMIN:{db_password}@ora_medium"\n')
+                f.write(f'DATABASE_URL="oracle+oracledb://ADMIN:{db_password}@{db_service}"\n')
             elif line.startswith("WALLET_PASSWORD="):
                 f.write(f'WALLET_PASSWORD="{wallet_password}"\n')
             elif line.startswith("GOOGLE_PROJECT_ID="):
