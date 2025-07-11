@@ -29,5 +29,16 @@ resource "google_oracle_database_autonomous_database" "oracle"{
 
 locals {
   oracle_database_url = "oracle+oracledb://admin:${random_password.oracle_adb.result}@${google_oracle_database_autonomous_database.oracle.autonomous_database_id}"
-  oracle_profiles = {for profile in google_oracle_database_autonomous_database.oracle.properties[0].connection_strings.profiles: lower(profile.consumer_group) => profile}
+  oracle_profiles = {for profile in google_oracle_database_autonomous_database.oracle.properties[0].connection_strings[0].profiles: lower(profile.consumer_group) => profile}
+}
+
+# Secrets
+resource "google_secret_manager_regional_secret" "oracle_tnsnames" {
+  secret_id = "${google_oracle_database_autonomous_database.oracle.autonomous_database_id}-tnsnames"
+  location = var.region
+}
+
+resource "google_secret_manager_regional_secret_version" "oracle_tnsnames" {
+  secret = google_secret_manager_regional_secret.oracle_tnsnames.id
+  secret_data = local.oracle_database_url
 }
