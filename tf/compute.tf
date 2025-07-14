@@ -83,6 +83,7 @@ resource "null_resource" "load_coffee_data" {
       git clone ${var.git_repo}
       cd oracledb-vertexai-demo
       git checkout ${var.git_branch}
+      cd app
       make install
 EOF
       '
