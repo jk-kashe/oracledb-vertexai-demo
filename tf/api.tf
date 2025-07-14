@@ -1,8 +1,9 @@
 # Enable APIs
 resource "google_project_service" "api" {
-    for_each = toset(var.apis)
+  for_each = toset(var.apis)
 
-    service = each.value
+  service            = each.value
+  disable_on_destroy = false
 }
 
 resource "time_sleep" "wait_for_api" {

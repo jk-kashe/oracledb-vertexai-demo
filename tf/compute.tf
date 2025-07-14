@@ -1,54 +1,54 @@
 # Client VM
 data "google_compute_zones" "available" {
-    status = "UP"
+  status = "UP"
 }
 
 resource "random_shuffle" "zone" {
-    input = data.google_compute_zones.available.names
-    result_count = 1  
+  input        = data.google_compute_zones.available.names
+  result_count = 1
 }
 
 resource "google_service_account" "oracle_client" {
-    account_id = "oracle-client"
-    display_name = "Oracle Client"
+  account_id   = "oracle-client"
+  display_name = "Oracle Client"
 }
 
 resource "google_project_iam_member" "oracle_client" {
-    project = var.project_id
-    role = "roles/oracledatabase.autonomousDatabaseViewer"
-    member = google_service_account.oracle_client.member
+  project = var.project_id
+  role    = "roles/oracledatabase.autonomousDatabaseViewer"
+  member  = google_service_account.oracle_client.member
 }
 
 resource "google_compute_instance" "oracle_client" {
-    depends_on = [google_oracle_database_autonomous_database.oracle]
+  depends_on = [google_oracle_database_autonomous_database.oracle]
 
-    name = "app1-${var.oracle_adb_instance_name}"
-    zone = random_shuffle.zone.result[0]
-    machine_type = "n2-standard-2"
+  name         = "app1-${var.oracle_adb_instance_name}"
+  zone         = random_shuffle.zone.result[0]
+  machine_type = "n2-standard-2"
 
-    boot_disk {
-      initialize_params {
-        image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
-        size = 10
-        type = "pd-standard"
-      }
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+      size  = 10
+      type  = "pd-standard"
     }
+  }
 
-    network_interface {
-      network = google_compute_network.oracle.id
-      subnetwork = google_compute_subnetwork.oracle.id
+  network_interface {
+    network    = google_compute_network.oracle.id
+    subnetwork = google_compute_subnetwork.oracle.id
 
-      access_config {}
-    }
+    access_config {}
+  }
 
-    service_account {
-        email = google_service_account.oracle_client.email
-      scopes = ["cloud-platform"]
-    }
+  service_account {
+    email  = google_service_account.oracle_client.email
+    scopes = ["cloud-platform"]
+  }
 
-    metadata = {
-      startup-script-url = "https://storage.googleapis.com/oracle-partner-demo-bucket/startup-scripts/ubuntu-oracle-startup-script.sh"
-    }
+  metadata = {
+    startup-script-url = "https://storage.googleapis.com/oracle-partner-demo-bucket/startup-scripts/ubuntu-oracle-startup-script.sh"
+  }
 }
 
 resource "time_sleep" "wait_for_oracle_client_startup_script" {
