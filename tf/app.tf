@@ -18,8 +18,14 @@ resource "google_artifact_registry_repository" "container_images" {
 }
 
 # API key
+resource "random_string" "coffee_apikey_suffix" {
+  length  = 4
+  special = false
+  upper   = false
+}
+
 resource "google_apikeys_key" "coffee" {
-  name         = "coffee"
+  name         = "coffee-${random_string.coffee_apikey_suffix.result}"
   display_name = "coffee"
 
   restrictions {
@@ -102,6 +108,8 @@ resource "random_password" "coffee_secret_key" {
 }
 
 resource "google_secret_manager_secret" "coffee_secret_key" {
+  depends_on = [time_sleep.wait_for_api]
+
   secret_id = "coffee-secret-key"
 
   replication {
@@ -212,4 +220,11 @@ resource "google_cloud_run_v2_service" "coffee" {
       }
     }
   }
+}
+
+# Allow public access to the app
+resource "google_cloud_run_v2_service_iam_member" "coffee_public" {
+  name   = google_cloud_run_v2_service.coffee.name
+  role   = "roles/run.invoker"
+  member = "allUsers"
 }

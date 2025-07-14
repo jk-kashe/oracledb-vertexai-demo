@@ -36,6 +36,8 @@ locals {
 
 # Secrets
 resource "google_secret_manager_secret" "oracle_database_url" {
+  depends_on = [time_sleep.wait_for_api]
+
   secret_id = "${google_oracle_database_autonomous_database.oracle.autonomous_database_id}-database-url"
 
   replication {
