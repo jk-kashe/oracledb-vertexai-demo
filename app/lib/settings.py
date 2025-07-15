@@ -38,27 +38,34 @@ TRUE_VALUES = {"True", "true", "1", "yes", "Y", "T"}
 class DatabaseSettings:
     """Oracle Database connection settings."""
 
-    USER: str = field(
-        default_factory=lambda: os.getenv("DATABASE_USER", "app"),
+    # For Autonomous Database Connection
+    URL: str | None = field(default_factory=lambda: os.getenv("DATABASE_URL"))
+    """Oracle Database URL (for Autonomous DB)."""
+    WALLET_PASSWORD: str | None = field(default_factory=lambda: os.getenv("WALLET_PASSWORD"))
+    """Oracle Database Wallet Password (for Autonomous DB)."""
+
+    # For Local/Standard Connection
+    USER: str | None = field(
+        default_factory=lambda: os.getenv("DATABASE_USER", "coffee"),
     )
     """Oracle Database User."""
-    PASSWORD: str = field(
-        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "super-secret"),
+    PASSWORD: str | None = field(
+        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "Super-secret1"),
     )
     """Oracle Database Password."""
-    HOST: str = field(
+    HOST: str | None = field(
         default_factory=lambda: os.getenv("DATABASE_HOST", "localhost"),
     )
     """Oracle Database Host."""
-    PORT: str = field(
+    PORT: str | None = field(
         default_factory=lambda: os.getenv("DATABASE_PORT", "1521"),
     )
     """Oracle Database Port."""
-    SERVICE_NAME: str = field(
+    SERVICE_NAME: str | None = field(
         default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "FREEPDB1"),
     )
     """Oracle Database Service Name."""
-    DSN: str = field(
+    DSN: str | None = field(
         default_factory=lambda: os.getenv(
             "DATABASE_DSN",
             f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'FREEPDB1')}",

@@ -1,22 +1,44 @@
--- Oracle 23AI Database Schema for Coffee Recommendation System
--- This script creates all necessary tables with Oracle 23AI features
 
--- Switch to the PDB (Pluggable Database)
-ALTER SESSION SET CONTAINER = freepdb1;
-grant select on v_$transaction to app;
-GRANT CONNECT, RESOURCE TO app;
-/* needed for connection pooling */
-GRANT SELECT ON v_$transaction TO app;
- /* needed for vector operations */
-GRANT CREATE MINING MODEL TO app;
-GRANT UNLIMITED TABLESPACE TO app;
-GRANT CREATE SEQUENCE TO app;
-GRANT CREATE TABLE TO app;
-GRANT CREATE VIEW TO app;
-GRANT CREATE PROCEDURE TO app;
-GRANT DB_DEVELOPER_ROLE TO app;
--- Connect as the app user (created by docker-compose)
-ALTER SESSION SET CURRENT_SCHEMA = app;
+-- This script creates the COFFEE user and all necessary database objects.
+-- It is designed to be run by a privileged user (e.g., ADMIN).
+
+-- Exit on first error to prevent partial setup
+WHENEVER SQLERROR EXIT SQL.SQLCODE
+
+-- Enable server output to see messages
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_user_count NUMBER;
+BEGIN
+    -- Check if the user 'coffee' exists before trying to drop it
+    SELECT COUNT(*) INTO v_user_count FROM dba_users WHERE username = 'COFFEE';
+    IF v_user_count > 0 THEN
+        DBMS_OUTPUT.PUT_LINE('User COFFEE exists. Dropping user...');
+        EXECUTE IMMEDIATE 'DROP USER coffee CASCADE';
+        DBMS_OUTPUT.PUT_LINE('User COFFEE dropped.');
+    END IF;
+END;
+/
+
+-- Create the application user 'coffee' with a default password.
+-- The application connects as this user.
+PROMPT Creating user COFFEE...
+CREATE USER coffee IDENTIFIED BY "Super-secret1";
+ALTER USER coffee QUOTA UNLIMITED ON data;
+
+-- Grant necessary privileges to the 'coffee' user
+PROMPT Granting privileges to COFFEE user...
+GRANT CONNECT, RESOURCE TO coffee;
+GRANT CREATE MINING MODEL TO coffee;
+
+-- Switch to the new user's schema to create objects
+PROMPT Switching to schema COFFEE...
+ALTER SESSION SET CURRENT_SCHEMA = coffee;
+
+--
+-- The rest of this script is the original schema creation logic.
+--
 
 -- Create app_config table
 CREATE TABLE app_config (
@@ -225,13 +247,8 @@ COMMENT ON TABLE chat_conversation IS 'Chat conversation history';
 -- Success message
 BEGIN
     DBMS_OUTPUT.PUT_LINE('✅ Database schema created successfully!');
-    DBMS_OUTPUT.PUT_LINE('Schema: app');
-    DBMS_OUTPUT.PUT_LINE('All tables created with Oracle 23AI features:');
-    DBMS_OUTPUT.PUT_LINE('- Vector search with HNSW indexing');
-    DBMS_OUTPUT.PUT_LINE('- Native JSON support');
-    DBMS_OUTPUT.PUT_LINE('- In-memory caching for hot data');
-    DBMS_OUTPUT.PUT_LINE('- Automatic timestamp updates (DEFAULT ON UPDATE)');
-    DBMS_OUTPUT.PUT_LINE('- IDENTITY columns for auto-incrementing PKs');
-    DBMS_OUTPUT.PUT_LINE('- No triggers or sequences needed!');
 END;
 /
+
+-- Exit sqlplus
+EXIT;

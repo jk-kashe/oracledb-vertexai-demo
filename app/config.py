@@ -37,6 +37,7 @@ from litestar_oracledb import (
 )
 
 from app.lib.settings import BASE_DIR, get_settings
+from urllib.parse import urlparse
 
 _settings = get_settings()
 
@@ -50,12 +51,42 @@ cors = CORSConfig(allow_origins=cast("list[str]", _settings.app.ALLOWED_CORS_ORI
 
 
 templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=JinjaTemplateEngine)
-oracle_sync = SyncOracleDatabaseConfig(
-    pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
-)
-oracle_async = AsyncOracleDatabaseConfig(
-    pool_config=AsyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
-)
+
+if _settings.db.URL:
+    # Autonomous Database configuration
+    # Parse the URL to get its components
+    parsed_url = urlparse(_settings.db.URL)
+    dsn = parsed_url.hostname
+
+    # The application ALWAYS connects as the application user, not the admin from the URL.
+    user = _settings.db.USER
+    password = _settings.db.PASSWORD
+
+    # Autonomous Database configuration with correctly parsed components
+    oracle_sync = SyncOracleDatabaseConfig(
+        pool_config=SyncOraclePoolConfig(
+            user=user,
+            password=password,
+            dsn=dsn,
+            wallet_password=_settings.db.WALLET_PASSWORD,
+        )
+    )
+    oracle_async = AsyncOracleDatabaseConfig(
+        pool_config=AsyncOraclePoolConfig(
+            user=user,
+            password=password,
+            dsn=dsn,
+            wallet_password=_settings.db.WALLET_PASSWORD,
+        )
+    )
+else:
+    # Local/Standard Database configuration
+    oracle_sync = SyncOracleDatabaseConfig(
+        pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
+    )
+    oracle_async = AsyncOracleDatabaseConfig(
+        pool_config=AsyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
+    )
 
 
 log = StructlogConfig(
