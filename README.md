@@ -26,7 +26,6 @@ These commands should be run as oracle user
 #clone
 git clone https://github.com/jk-kashe/oracledb-vertexai-demo
 cd oracledb-vertexai-demo
-git checkout autonomous #will be moved to main
 
 # Setup environment - follow the prerequisites below for details
 make config
