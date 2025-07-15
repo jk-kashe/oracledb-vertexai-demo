@@ -4,6 +4,8 @@ An intelligent coffee recommendation system showcasing Oracle 23AI vector search
 
 This fork of the original version is intended to work with Oracle Autonomous@GCP.
 
+A version which deploys autonomous database and deploys the app in cloud run is available on the [autonomous-run](https://github.com/jk-kashe/oracledb-vertexai-demo/tree/autonomous-run) branch.
+
 ## 🚀 Quick Start
 
 **Note: Install autonomous db wallet (zip file) in oracle user home folder before continuing!**
